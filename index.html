@@ -23,9 +23,13 @@
   --rosa-forte:  #9c1349;
   --rosa-claro:  #fce4ec;
   --rosa-suave:  #fff5f8;
-  --tinta:       #2e1b24;
-  --tinta-2:     #5c414d;
-  --fraco:       #93707f;
+  /* Texto preto, não marrom. O tom rosado antigo se perdia sobre o
+     fundo claro e a marca d'água — no celular, no salão, com a tela
+     no sol, sumia de vez. Os secundários desceram junto para o texto
+     de apoio continuar legível. */
+  --tinta:       #000000;
+  --tinta-2:     #33262c;
+  --fraco:       #6a5761;
   --superficie:  #ffffff;
   --superficie-2:#fdf7f9;
   /* cartão quase opaco: deixa a marca do fundo aparecer sem tirar
@@ -653,7 +657,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.4";
+var VERSAO_APP = "1.5";
 
 var CHAVE = "agenda-salao.v1";
 
