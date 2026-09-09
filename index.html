@@ -118,8 +118,11 @@ button { cursor: pointer; }
 .marca { flex: 1 1 auto; min-width: 0; }
 .marca small { display: block; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--fraco); }
 .marca .nome {
-  font-family: var(--fonte); font-size: 18px; font-weight: 700;
+  /* 16.5px porque "Espaço Mãe & Filha" precisa caber inteiro ao lado da
+     logo e do botão "hoje" num celular estreito */
+  font-family: var(--fonte); font-size: 16.5px; font-weight: 700;
   border: 0; background: transparent; padding: 0; width: 100%; color: var(--tinta);
+  text-overflow: ellipsis;
 }
 .marca .nome:focus { outline: none; border-bottom: 1px dashed var(--linha-forte); }
 
