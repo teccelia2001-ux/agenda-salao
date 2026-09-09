@@ -587,6 +587,21 @@ button { cursor: pointer; }
     </div>
 
     <div class="cartao">
+      <div class="cartao-topo">
+        <h2>Versão</h2>
+        <span class="dica" id="versaoAtual">—</span>
+      </div>
+      <div class="cartao-corpo">
+        <p style="font-size:13.5px;color:var(--tinta-2);margin-bottom:13px">
+          O app se atualiza sozinho quando você abre com internet. Este botão força a
+          procura agora, útil quando alguma correção acabou de sair.
+        </p>
+        <button class="btn" id="btnAtualizar">Procurar atualização</button>
+        <p style="font-size:12.5px;color:var(--fraco);margin-top:11px" id="recadoVersao"></p>
+      </div>
+    </div>
+
+    <div class="cartao">
       <div class="cartao-topo"><h2>Instalar no celular</h2></div>
       <div class="cartao-corpo">
         <p style="font-size:13.5px;color:var(--tinta-2)">
@@ -601,9 +616,8 @@ button { cursor: pointer; }
     <div class="cartao">
       <div class="cartao-topo"><h2>Apagar tudo</h2></div>
       <div class="cartao-corpo">
-        <p style="font-size:13.5px;color:var(--tinta-2);margin-bottom:13px">
-          Remove todos os agendamentos, clientes e serviços deste aparelho. O que já subiu para
-          a sua conta continua no servidor e volta na próxima sincronização. Não dá para desfazer.
+        <p style="font-size:13.5px;color:var(--tinta-2);margin-bottom:13px" id="textoApagar">
+          Remove todos os agendamentos, clientes, serviços e itens da loja. Não dá para desfazer.
         </p>
         <button class="btn btn-perigo" id="btnApagarTudo">Apagar tudo</button>
       </div>
@@ -635,6 +649,11 @@ button { cursor: pointer; }
    Onde tudo mora: localStorage deste aparelho, numa chave só.
    Nada sai daqui — não há servidor, conta nem internet envolvida.
    ============================================================ */
+
+/* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
+   "Procurar atualização" compara com a que está no servidor.
+   O formato é livre; o que importa é mudar quando o app muda. */
+var VERSAO_APP = "1.4";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -3091,6 +3110,18 @@ function desenharAjustes() {
     return "<button type=\"button\" class=\"ficha\" data-dia-semana=\"" + i + "\" aria-pressed=\"" + on + "\">" + n + "</button>";
   }).join("");
 
+  var vs = document.getElementById("versaoAtual");
+  if (vs) vs.textContent = "versão " + VERSAO_APP;
+
+  var txtApagar = document.getElementById("textoApagar");
+  if (txtApagar) {
+    txtApagar.innerHTML = (temServidor() && sessao)
+      ? "Remove todos os agendamentos, clientes, serviços e itens da loja <b>deste celular e da " +
+        "sua conta</b>. Pede a sua senha antes, para ninguém apagar por engano. Não dá para desfazer."
+      : "Remove todos os agendamentos, clientes, serviços e itens da loja deste aparelho. " +
+        "Não dá para desfazer.";
+  }
+
   var onde = document.getElementById("ondeGuardado");
   if (onde) {
     onde.textContent =
@@ -3128,16 +3159,150 @@ document.getElementById("nomeSalao").addEventListener("change", function () {
   salvar();
 });
 
+/* Apagar tudo é o botão mais perigoso do app, e quem usa o celular no
+   meio do atendimento esbarra em qualquer coisa. Com conta, só a senha
+   destrava — a mesma de entrar. Sem conta não existe senha para
+   conferir, então resta a pergunta de sempre. */
+document.getElementById("btnAtualizar").addEventListener("click", procurarAtualizacao);
+
 document.getElementById("btnApagarTudo").addEventListener("click", function () {
+  if (temServidor() && sessao) { pedirSenhaParaApagar(); return; }
   perguntar("Apagar tudo mesmo?",
-    "Todos os agendamentos, clientes e serviços deste aparelho serão removidos. O que já subiu para a sua conta continua no servidor.",
-    "Apagar tudo", true, function () {
-      dados = padrao();
-      salvar();
-      partida();
-      recado("Tudo apagado.");
-    });
+    "Todos os agendamentos, clientes e serviços deste aparelho serão removidos. Não dá para desfazer.",
+    "Apagar tudo", true, apagarTudo);
 });
+
+function pedirSenhaParaApagar() {
+  abrirJanela({
+    titulo: "Apagar tudo deste aparelho",
+    detalhe: "Digite a senha da conta " + (sessao.usuario || "") + " para confirmar.",
+    corpo:
+      "<p style=\"font-size:13.5px;color:var(--tinta-2);margin-bottom:13px\">" +
+      "Apaga os agendamentos, clientes, serviços e itens da loja <b>deste celular e da sua " +
+      "conta</b> — ou seja, de todos os aparelhos. Não dá para desfazer, e não existe cópia " +
+      "em outro lugar.</p>" +
+      "<div class=\"campo\"><label for=\"xSenha\">Senha</label>" +
+      "<input type=\"password\" id=\"xSenha\" autocomplete=\"current-password\" /></div>" +
+      "<p class=\"aviso-campo\" id=\"xAviso\"></p>",
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: "Apagar tudo", classe: "btn-perigo", acao: function () {
+        var senha = document.getElementById("xSenha").value;
+        var aviso = document.getElementById("xAviso");
+        if (!senha) { aviso.textContent = "Digite a senha."; return false; }
+        aviso.textContent = "conferindo…";
+
+        /* Confere contra o servidor sem trocar a sessão em uso: se a
+           senha estiver certa vem um token novo, que é descartado. */
+        postAuth("token?grant_type=password", {
+          email: emailDe(sessao.usuario), password: senha
+        }).then(function (r) {
+          if (!r.ok || !r.corpo.access_token) {
+            aviso.textContent = "Senha errada. Nada foi apagado.";
+            return;
+          }
+          aviso.textContent = "apagando…";
+          apagarNoServidor().then(function (deu) {
+            fecharJanela();
+            apagarTudo();
+            if (!deu) recado("Apagado deste aparelho, mas o servidor recusou parte. Sincronize depois.");
+          });
+        }, function () {
+          aviso.textContent = "Sem internet para conferir a senha. Nada foi apagado.";
+        });
+        return false;                  // fecha só quando o servidor responder
+      } }
+    ],
+    pronto: function () {
+      var campo = document.getElementById("xSenha");
+      if (campo) campo.focus();
+    }
+  });
+}
+
+/* ---------- procurar versão nova ----------
+   Busca a própria página no servidor, ignorando cache, e lê a versão
+   declarada lá dentro. Se for diferente da que está rodando, joga
+   fora o cache guardado e recarrega — é o caminho mais curto entre
+   "saiu uma correção" e "o celular está com ela". */
+
+function procurarAtualizacao() {
+  var recadoEl = document.getElementById("recadoVersao");
+  var botao = document.getElementById("btnAtualizar");
+  recadoEl.textContent = "procurando…";
+  botao.disabled = true;
+
+  fetch("index.html?v=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { return r.text(); })
+    .then(function (texto) {
+      var achou = texto.match(/VERSAO_APP\s*=\s*"([^"]+)"/);
+      var laFora = achou ? achou[1] : null;
+
+      if (!laFora) {
+        recadoEl.textContent = "Não deu para ler a versão do servidor. Tente de novo mais tarde.";
+        botao.disabled = false;
+        return;
+      }
+      if (laFora === VERSAO_APP) {
+        recadoEl.textContent = "Você já está na versão mais nova (" + VERSAO_APP + ").";
+        botao.disabled = false;
+        return;
+      }
+
+      recadoEl.textContent = "Versão " + laFora + " encontrada. Atualizando…";
+      limparCacheERecarregar();
+    })
+    .catch(function () {
+      recadoEl.textContent = "Sem internet para procurar. Tente quando o sinal voltar.";
+      botao.disabled = false;
+    });
+}
+
+function limparCacheERecarregar() {
+  var tarefas = [];
+  if (window.caches && caches.keys) {
+    tarefas.push(caches.keys().then(function (nomes) {
+      return Promise.all(nomes.map(function (n) { return caches.delete(n); }));
+    }).catch(function () {}));
+  }
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+    tarefas.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+      return Promise.all(regs.map(function (reg) { return reg.update().catch(function () {}); }));
+    }).catch(function () {}));
+  }
+  Promise.all(tarefas).then(function () {
+    // o parâmetro força o navegador a buscar a página de novo, sem cache
+    location.replace(location.pathname + "?v=" + Date.now());
+  });
+}
+
+/* Some com tudo no servidor também. Sem isto, apagar só no aparelho
+   seria teatro: a sincronização seguinte traria tudo de volta. */
+function apagarNoServidor() {
+  return token().then(function (tk) {
+    if (!tk) return false;
+    var dono = conta.id;
+    var tabelas = ["agenda_horarios", "agenda_clientes", "agenda_servicos",
+                   "agenda_profissionais", "agenda_config",
+                   "loja_vendas", "loja_produtos", "loja_categorias"];
+    return Promise.all(tabelas.map(function (t) {
+      return rest("DELETE", t + "?dono=eq." + dono, null, tk)
+        .then(function (r) { return !!(r && (r.ok || r.status === 404)); },
+              function () { return false; });
+    })).then(function (res) { return res.every(Boolean); });
+  }, function () { return false; });
+}
+
+function apagarTudo() {
+  dados = padrao();
+  loja = padraoLoja();
+  guardarLixo(lixoVazio());     // nada pendente de uma agenda que não existe mais
+  salvar();
+  salvarLoja();
+  marcarSujo(false);
+  partida();
+  recado("Tudo apagado.");
+}
 
 /* ============================================================
    BOTÃO GRANDE E PARTIDA
