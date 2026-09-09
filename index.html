@@ -28,6 +28,9 @@
   --fraco:       #93707f;
   --superficie:  #ffffff;
   --superficie-2:#fdf7f9;
+  /* cartão quase opaco: deixa a marca do fundo aparecer sem tirar
+     legibilidade do que importa, que é o texto por cima */
+  --vidro:       rgba(255,255,255,.90);
   --linha:       #f1d9e3;
   --linha-forte: #e5bfd0;
   --ok:          #2e7d5b;
@@ -58,6 +61,7 @@
     --fraco:       #a98a99;
     --superficie:  #21131a;
     --superficie-2:#2a1922;
+    --vidro:       rgba(33,19,26,.88);
     --linha:       #3d2531;
     --linha-forte: #52333f;
     --ok:          #7fd1a8;
@@ -78,6 +82,19 @@ body {
   margin: 0; background: var(--rosa-suave); color: var(--tinta);
   font: 15px/1.5 var(--fonte);
 }
+
+/* A marca ao fundo, bem apagada: dá identidade sem disputar com o
+   texto. Fica presa à tela (não rola junto) e ignora o toque, senão
+   roubaria os cliques do calendário. */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: url("icones/logo.png") no-repeat center 40%;
+  background-size: min(86vw, 520px);
+  opacity: .16;
+}
+@media (prefers-color-scheme: dark) {
+  body::before { opacity: .16; }
+}
 h1, h2, h3 { font-family: var(--fonte); font-weight: 700; margin: 0; letter-spacing: -.01em; }
 h1 { font-size: 21px; font-weight: 800; }
 h2 { font-size: 17px; }
@@ -94,6 +111,10 @@ button { cursor: pointer; }
   padding: calc(10px + env(safe-area-inset-top)) 14px 0;
 }
 .topo-linha { display: flex; align-items: center; gap: 10px; }
+.logo-topo {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--linha); background: #fbf6f9;
+}
 .marca { flex: 1 1 auto; min-width: 0; }
 .marca small { display: block; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--fraco); }
 .marca .nome {
@@ -106,10 +127,10 @@ button { cursor: pointer; }
 .abas::-webkit-scrollbar { display: none; }
 .aba {
   flex: 0 0 auto; border: 0; background: transparent; color: var(--fraco);
-  /* apertado de propósito: com a Open Sans, mais larga, as cinco abas
+  /* apertado de propósito: com a Open Sans, mais larga, as seis abas
      precisam caber num celular de 360px sem virar rolagem escondida */
-  padding: 9px 9px 11px; border-bottom: 2.5px solid transparent;
-  font-size: 13.5px; font-weight: 600; white-space: nowrap;
+  padding: 9px 6px 11px; border-bottom: 2.5px solid transparent;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
 }
 .aba[aria-current="page"] { color: var(--rosa); border-bottom-color: var(--rosa); }
 
@@ -119,7 +140,7 @@ button { cursor: pointer; }
 .tela[hidden] { display: none; }
 
 .cartao {
-  background: var(--superficie); border: 1px solid var(--linha);
+  background: var(--vidro); border: 1px solid var(--linha);
   border-radius: var(--raio); box-shadow: var(--sombra); overflow: hidden;
 }
 .cartao + .cartao { margin-top: 14px; }
@@ -343,9 +364,10 @@ button { cursor: pointer; }
 
 <header class="topo">
   <div class="topo-linha">
+    <img class="logo-topo" src="icones/logo.png" alt="" />
     <div class="marca">
       <small>Agenda do salão</small>
-      <input class="nome" id="nomeSalao" value="Meu Salão" aria-label="Nome do salão" />
+      <input class="nome" id="nomeSalao" value="Espaço Mãe &amp; Filha" aria-label="Nome do salão" />
     </div>
     <button class="btn btn-mini" id="btnHoje">hoje</button>
   </div>
@@ -616,7 +638,7 @@ var CHAVE = "agenda-salao.v1";
 function padrao() {
   return {
     config: {
-      nome: "Meu Salão",
+      nome: "Espaço Mãe & Filha",
       abre: "08:00",
       fecha: "19:00",
       intervalo: 30,
@@ -3098,7 +3120,7 @@ document.getElementById("diasSemana").addEventListener("click", function (e) {
 });
 
 document.getElementById("nomeSalao").addEventListener("change", function () {
-  dados.config.nome = this.value.trim() || "Meu Salão";
+  dados.config.nome = this.value.trim() || "Espaço Mãe & Filha";
   this.value = dados.config.nome;
   salvar();
 });

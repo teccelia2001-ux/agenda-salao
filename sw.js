@@ -11,7 +11,7 @@
    Os agendamentos NÃO passam por aqui: eles moram no armazenamento do
    aparelho (localStorage) e nunca saem dele. */
 
-var VERSAO = "agenda-salao-v1";
+var VERSAO = "agenda-salao-v2";   // v2: entrou a logo do Espaco Mae & Filha
 var ESSENCIAIS = [
   "./",
   "./index.html",
@@ -19,7 +19,8 @@ var ESSENCIAIS = [
   "./icones/icone-192.png",
   "./icones/icone-512.png",
   "./icones/icone-512-mascara.png",
-  "./icones/icone-180.png"
+  "./icones/icone-180.png",
+  "./icones/logo.png"
 ];
 
 self.addEventListener("install", function (evento) {
