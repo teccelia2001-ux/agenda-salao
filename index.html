@@ -32,9 +32,10 @@
   --fraco:       #6a5761;
   --superficie:  #ffffff;
   --superficie-2:#fdf7f9;
-  /* cartão quase opaco: deixa a marca do fundo aparecer sem tirar
-     legibilidade do que importa, que é o texto por cima */
-  --vidro:       rgba(255,255,255,.90);
+  /* cartão translúcido: a marca do fundo atravessa. Dá para ser
+     generoso aqui porque o texto por cima é preto — o contraste
+     aguenta bem mais transparência do que aguentava no marrom. */
+  --vidro:       rgba(255,255,255,.66);
   --linha:       #f1d9e3;
   --linha-forte: #e5bfd0;
   --ok:          #2e7d5b;
@@ -65,7 +66,7 @@
     --fraco:       #a98a99;
     --superficie:  #21131a;
     --superficie-2:#2a1922;
-    --vidro:       rgba(33,19,26,.88);
+    --vidro:       rgba(33,19,26,.70);
     --linha:       #3d2531;
     --linha-forte: #52333f;
     --ok:          #7fd1a8;
@@ -93,11 +94,11 @@ body {
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background: url("icones/logo.png") no-repeat center 40%;
-  background-size: min(86vw, 520px);
-  opacity: .16;
+  background-size: min(90vw, 560px);
+  opacity: .22;
 }
 @media (prefers-color-scheme: dark) {
-  body::before { opacity: .16; }
+  body::before { opacity: .20; }
 }
 h1, h2, h3 { font-family: var(--fonte); font-weight: 700; margin: 0; letter-spacing: -.01em; }
 h1 { font-size: 21px; font-weight: 800; }
@@ -657,7 +658,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.5";
+var VERSAO_APP = "1.6";
 
 var CHAVE = "agenda-salao.v1";
 
