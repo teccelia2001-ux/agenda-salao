@@ -1,0 +1,3181 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Agenda do Salão</title>
+<meta name="theme-color" content="#c2185b" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icones/icone-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Agenda" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   Agenda do Salão — tudo fica guardado no próprio aparelho.
+   Sem servidor, sem login, sem banco de dados.
+   ============================================================ */
+
+:root {
+  --rosa:        #c2185b;
+  --rosa-forte:  #9c1349;
+  --rosa-claro:  #fce4ec;
+  --rosa-suave:  #fff5f8;
+  --tinta:       #2e1b24;
+  --tinta-2:     #5c414d;
+  --fraco:       #93707f;
+  --superficie:  #ffffff;
+  --superficie-2:#fdf7f9;
+  --linha:       #f1d9e3;
+  --linha-forte: #e5bfd0;
+  --ok:          #2e7d5b;
+  --ok-suave:    #e3f4ec;
+  --verde-claro: #d7f0e2;
+  --verde-forte: #1f6b49;
+  --alerta:      #b3541e;
+  --alerta-suave:#fdeee3;
+  --erro:        #b3261e;
+  --erro-suave:  #fdeaea;
+  --sombra:      0 1px 2px rgba(46,27,36,.06), 0 8px 24px rgba(46,27,36,.06);
+  --raio:        14px;
+  /* mesma letra dos aplicativos do SESMT. O sistema entra no lugar
+     quando o Google Fonts não carrega — sem internet, por exemplo */
+  --fonte:       "Open Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif:       var(--fonte);
+  --mono:        ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rosa:        #f06292;
+    --rosa-forte:  #f8a5c0;
+    --rosa-claro:  #3b1f2b;
+    --rosa-suave:  #2a1720;
+    --tinta:       #f7e9ef;
+    --tinta-2:     #d9bfcb;
+    --fraco:       #a98a99;
+    --superficie:  #21131a;
+    --superficie-2:#2a1922;
+    --linha:       #3d2531;
+    --linha-forte: #52333f;
+    --ok:          #7fd1a8;
+    --ok-suave:    #1e3830;
+    --verde-claro: #1f4034;
+    --verde-forte: #8fe0b6;
+    --alerta:      #e8a877;
+    --alerta-suave:#3a2618;
+    --erro:        #f0918b;
+    --erro-suave:  #3a1e1e;
+    --sombra:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--rosa-suave); color: var(--tinta);
+  font: 15px/1.5 var(--fonte);
+}
+h1, h2, h3 { font-family: var(--fonte); font-weight: 700; margin: 0; letter-spacing: -.01em; }
+h1 { font-size: 21px; font-weight: 800; }
+h2 { font-size: 17px; }
+h3 { font-size: 15px; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--rosa); outline-offset: 2px; }
+
+/* ---------- estrutura ---------- */
+.topo {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--superficie); border-bottom: 1px solid var(--linha);
+  padding: calc(10px + env(safe-area-inset-top)) 14px 0;
+}
+.topo-linha { display: flex; align-items: center; gap: 10px; }
+.marca { flex: 1 1 auto; min-width: 0; }
+.marca small { display: block; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--fraco); }
+.marca .nome {
+  font-family: var(--fonte); font-size: 18px; font-weight: 700;
+  border: 0; background: transparent; padding: 0; width: 100%; color: var(--tinta);
+}
+.marca .nome:focus { outline: none; border-bottom: 1px dashed var(--linha-forte); }
+
+.abas { display: flex; gap: 2px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; }
+.abas::-webkit-scrollbar { display: none; }
+.aba {
+  flex: 0 0 auto; border: 0; background: transparent; color: var(--fraco);
+  /* apertado de propósito: com a Open Sans, mais larga, as cinco abas
+     precisam caber num celular de 360px sem virar rolagem escondida */
+  padding: 9px 9px 11px; border-bottom: 2.5px solid transparent;
+  font-size: 13.5px; font-weight: 600; white-space: nowrap;
+}
+.aba[aria-current="page"] { color: var(--rosa); border-bottom-color: var(--rosa); }
+
+/* a sobra embaixo é o espaço do botão flutuante: sem ela o último
+   horário do dia fica escondido atrás do "+ Agendar" */
+.folha { max-width: 940px; margin: 0 auto; padding: 16px 14px 132px; }
+.tela[hidden] { display: none; }
+
+.cartao {
+  background: var(--superficie); border: 1px solid var(--linha);
+  border-radius: var(--raio); box-shadow: var(--sombra); overflow: hidden;
+}
+.cartao + .cartao { margin-top: 14px; }
+.cartao-topo {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 13px 15px; border-bottom: 1px solid var(--linha);
+}
+.cartao-topo .dica { font-size: 12.5px; color: var(--fraco); margin-left: auto; }
+.cartao-corpo { padding: 15px; }
+
+/* ---------- botões ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border-radius: 10px; border: 1.5px solid var(--linha-forte);
+  background: var(--superficie); color: var(--tinta);
+  padding: 10px 14px; font-size: 14.5px; font-weight: 600;
+}
+.btn:hover { background: var(--superficie-2); }
+.btn-forte { background: var(--rosa); border-color: var(--rosa); color: #fff; }
+.btn-forte:hover { background: var(--rosa-forte); border-color: var(--rosa-forte); }
+.btn-leve { border-color: transparent; background: transparent; color: var(--rosa); padding: 8px 10px; }
+.btn-leve:hover { background: var(--rosa-claro); }
+.btn-perigo { color: var(--erro); }
+.btn-perigo:hover { background: var(--erro-suave); }
+.btn-mini { padding: 6px 10px; font-size: 13px; border-radius: 8px; }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.fab {
+  position: fixed; right: 16px; z-index: 25;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  border: 0; border-radius: 999px; background: var(--rosa); color: #fff;
+  padding: 15px 22px; font-size: 15.5px; font-weight: 600;
+  box-shadow: 0 6px 20px rgba(194,24,91,.35);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+/* o display acima ganha do [hidden] do navegador: sem esta linha o botão
+   continuava aparecendo no Caixa e nos Ajustes, onde não agenda nada */
+.fab[hidden] { display: none; }
+
+/* ---------- campos ---------- */
+.campo { display: flex; flex-direction: column; gap: 5px; }
+.campo > label { font-size: 12.5px; font-weight: 600; color: var(--tinta-2); }
+.campo input, .campo select, .campo textarea {
+  width: 100%; padding: 11px 12px; border-radius: 10px;
+  border: 1.5px solid var(--linha-forte); background: var(--superficie);
+}
+.campo textarea { resize: vertical; min-height: 68px; }
+.campo small { font-size: 11.5px; color: var(--fraco); }
+.grade { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.grade .largo { grid-column: 1 / -1; }
+@media (max-width: 460px) { .grade { grid-template-columns: 1fr; } }
+
+/* ---------- calendário ---------- */
+.mes-nav { display: flex; align-items: center; gap: 8px; width: 100%; }
+.mes-nav .titulo { flex: 1 1 auto; text-align: center; min-width: 0; }
+/* nada de text-transform aqui: "capitalize" devolve "Setembro De 2026".
+   Quem levanta só a primeira letra é o JS, em maiusculaInicial(). */
+.mes-nav .titulo strong { display: block; font-family: var(--fonte); font-size: 16.5px; font-weight: 700; }
+.mes-nav .titulo span { font-size: 11.5px; color: var(--fraco); }
+.seta {
+  width: 38px; height: 38px; flex: 0 0 auto; border-radius: 10px;
+  border: 1.5px solid var(--linha-forte); background: var(--superficie);
+  font-size: 17px; line-height: 1; color: var(--tinta-2);
+}
+
+.semana-cab { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 5px; }
+.semana-cab span { text-align: center; font-size: 10.5px; font-weight: 700; color: var(--fraco); text-transform: uppercase; letter-spacing: .06em; }
+.grade-mes { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.dia {
+  position: relative; aspect-ratio: 1 / 1; min-height: 42px;
+  border: 1.5px solid transparent; border-radius: 11px;
+  background: var(--superficie-2); color: var(--tinta);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  padding: 2px; font-size: 14.5px; font-weight: 600;
+}
+/* As três cores do calendário, para ler o mês de longe:
+   verde = tem cliente marcada · rosa = dia livre esperando agendamento ·
+   cinza = já passou, não há mais o que fazer ali. */
+.dia.passado { background: var(--superficie-2); color: var(--fraco); }
+.dia.livre   { background: var(--rosa-claro); color: var(--rosa-forte); }
+.dia.marcado { background: var(--verde-claro); color: var(--verde-forte); }
+.dia.fechado { background: repeating-linear-gradient(135deg, var(--superficie-2), var(--superficie-2) 5px, var(--linha) 5px, var(--linha) 6px); color: var(--fraco); }
+.dia.fora { color: var(--fraco); opacity: .4; background: transparent; }
+.dia.hoje { border-color: var(--tinta); font-weight: 800; }
+
+/* o dia escolhido ganha um anel, não uma cor: pintar por cima apagaria
+   o verde/rosa/cinza, que é justamente a informação da grade */
+.dia[aria-pressed="true"] { border-color: var(--tinta); box-shadow: 0 0 0 2.5px var(--tinta) inset; }
+
+.dia .pontos { display: flex; gap: 2px; height: 5px; align-items: center; }
+.dia .pontos i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; display: block; opacity: .75; }
+
+.legenda {
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+  margin-top: 12px; font-size: 11.5px; color: var(--fraco);
+}
+.legenda span { display: inline-flex; align-items: center; gap: 5px; }
+.legenda i { width: 11px; height: 11px; border-radius: 4px; display: block; }
+.legenda .c-marcado { background: var(--verde-claro); }
+.legenda .c-livre { background: var(--rosa-claro); }
+.legenda .c-passado { background: var(--superficie-2); border: 1px solid var(--linha); }
+
+/* ---------- agenda do dia ---------- */
+.hora {
+  display: flex; gap: 11px; align-items: stretch;
+  border: 1.5px solid var(--linha); border-left: 5px solid var(--rosa); border-radius: 11px;
+  background: var(--superficie); padding: 11px 12px; margin-bottom: 8px;
+  width: 100%; text-align: left;
+}
+.hora:hover { border-color: var(--linha-forte); border-left-color: var(--rosa); }
+.hora .quando { flex: 0 0 52px; }
+.hora .quando b { display: block; font-family: var(--mono); font-size: 14.5px; }
+.hora .quando small { font-size: 11px; color: var(--fraco); }
+.hora .quem { flex: 1 1 auto; min-width: 0; }
+.hora .quem b { display: block; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hora .quem small { display: block; font-size: 12.5px; color: var(--tinta-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hora .valor { flex: 0 0 auto; text-align: right; font-family: var(--mono); font-size: 13.5px; color: var(--tinta-2); }
+.hora.st-atendido { background: var(--ok-suave); }
+.hora.st-faltou { background: var(--alerta-suave); }
+.hora.st-cancelado { opacity: .5; }
+.hora.st-cancelado .quem b { text-decoration: line-through; }
+
+.vago {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  border: 1.5px dashed var(--linha-forte); border-radius: 11px; background: transparent;
+  padding: 9px 12px; margin-bottom: 8px; color: var(--fraco); font-size: 13.5px; text-align: left;
+}
+.vago:hover { background: var(--superficie-2); color: var(--rosa); border-color: var(--rosa); }
+.vago b { font-family: var(--mono); font-size: 13.5px; }
+
+.selo {
+  display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px;
+  border-radius: 999px; background: var(--rosa-claro); color: var(--rosa-forte);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.selo.ok { background: var(--ok-suave); color: var(--ok); }
+.selo.aviso { background: var(--alerta-suave); color: var(--alerta); }
+.selo.frio { background: var(--superficie-2); color: var(--fraco); }
+
+/* ---------- listas ---------- */
+.item { display: flex; align-items: center; gap: 11px; padding: 12px 0; border-top: 1px solid var(--linha); }
+.item:first-child { border-top: 0; }
+.item .txt { flex: 1 1 auto; min-width: 0; }
+.item .txt b { display: block; font-size: 14.5px; }
+.item .txt small { display: block; font-size: 12.5px; color: var(--fraco); }
+.item .acoes { display: flex; gap: 4px; flex: 0 0 auto; }
+.av {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--rosa-claro); color: var(--rosa-forte);
+  display: grid; place-items: center; font-weight: 700; font-size: 14px;
+}
+
+.vazio { text-align: center; padding: 26px 16px; color: var(--fraco); font-size: 13.5px; }
+.vazio b { display: block; color: var(--tinta-2); font-size: 15px; margin-bottom: 4px; font-family: var(--fonte); font-weight: 700; }
+
+/* ---------- números ---------- */
+.numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 1px; background: var(--linha); }
+.numero { background: var(--superficie); padding: 14px 15px; }
+.numero small { display: block; font-size: 11px; color: var(--fraco); text-transform: uppercase; letter-spacing: .07em; }
+.numero b { display: block; font-size: 21px; font-family: var(--fonte); font-weight: 700; margin-top: 3px; }
+.numero.dinheiro b { color: var(--ok); }
+.numero.atrasado b { color: var(--alerta); }
+
+.barra-lista { display: flex; flex-direction: column; gap: 10px; }
+.barra-item small { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 4px; }
+.barra { height: 8px; border-radius: 999px; background: var(--superficie-2); overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--rosa); border-radius: 999px; }
+
+/* ---------- janela ---------- */
+.veu {
+  position: fixed; inset: 0; z-index: 60; background: rgba(46,27,36,.45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.veu[hidden] { display: none; }
+.janela {
+  background: var(--superficie); width: 100%; max-width: 560px;
+  border-radius: 18px 18px 0 0; box-shadow: var(--sombra);
+  max-height: 92vh; display: flex; flex-direction: column;
+}
+@media (min-width: 620px) {
+  .veu { align-items: center; padding: 20px; }
+  .janela { border-radius: 18px; }
+}
+.puxador { width: 40px; height: 4px; border-radius: 99px; background: var(--linha-forte); margin: 8px auto 0; }
+.janela-topo { padding: 14px 18px 12px; border-bottom: 1px solid var(--linha); }
+.janela-topo p { font-size: 13px; color: var(--fraco); margin-top: 3px; }
+.janela-corpo { padding: 16px 18px; overflow-y: auto; }
+.janela-pe {
+  display: flex; gap: 9px; padding: 13px 18px;
+  padding-bottom: calc(13px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--linha);
+}
+.janela-pe .btn { flex: 1 1 auto; }
+
+.aviso-campo { color: var(--erro); font-size: 12.5px; min-height: 17px; }
+
+.recado {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 70;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  background: var(--tinta); color: var(--rosa-suave);
+  padding: 11px 17px; border-radius: 999px; font-size: 13.5px; font-weight: 500;
+  box-shadow: var(--sombra); max-width: 86vw; text-align: center;
+}
+.recado[hidden] { display: none; }
+
+.fichas { display: flex; gap: 7px; flex-wrap: wrap; }
+.ficha {
+  border: 1.5px solid var(--linha-forte); background: var(--superficie);
+  border-radius: 999px; padding: 7px 13px; font-size: 13.5px; font-weight: 600; color: var(--tinta-2);
+}
+.ficha[aria-pressed="true"] { background: var(--rosa); border-color: var(--rosa); color: #fff; }
+
+.linha-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.linha-botoes .btn { flex: 1 1 auto; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media print { .topo, .fab, .veu, .btn { display: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-linha">
+    <div class="marca">
+      <small>Agenda do salão</small>
+      <input class="nome" id="nomeSalao" value="Meu Salão" aria-label="Nome do salão" />
+    </div>
+    <button class="btn btn-mini" id="btnHoje">hoje</button>
+  </div>
+  <nav class="abas" id="abas" aria-label="Seções">
+    <button class="aba" data-tela="agenda" aria-current="page">Agenda</button>
+    <button class="aba" data-tela="clientes">Clientes</button>
+    <button class="aba" data-tela="servicos">Serviços</button>
+    <button class="aba" data-tela="caixa">Caixa</button>
+    <button class="aba" data-tela="loja">Loja</button>
+    <button class="aba" data-tela="ajustes">Ajustes</button>
+  </nav>
+</header>
+
+<main class="folha">
+
+  <!-- ============ AGENDA ============ -->
+  <section class="tela" id="telaAgenda">
+    <div class="cartao">
+      <div class="cartao-topo">
+        <div class="mes-nav">
+          <button class="seta" id="mesAnterior" aria-label="Mês anterior">&larr;</button>
+          <div class="titulo">
+            <strong id="mesTitulo">—</strong>
+            <span id="mesResumo">—</span>
+          </div>
+          <button class="seta" id="mesProximo" aria-label="Próximo mês">&rarr;</button>
+        </div>
+      </div>
+      <div class="cartao-corpo">
+        <div class="semana-cab" aria-hidden="true">
+          <span>dom</span><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span><span>sáb</span>
+        </div>
+        <div class="grade-mes" id="gradeMes"></div>
+        <div class="legenda">
+          <span><i class="c-marcado"></i>tem cliente</span>
+          <span><i class="c-livre"></i>falta agendar</span>
+          <span><i class="c-passado"></i>já passou</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo">
+        <h2 id="diaTitulo">—</h2>
+        <span class="dica" id="diaResumo">—</span>
+      </div>
+      <div class="cartao-corpo" id="listaDia"></div>
+    </div>
+  </section>
+
+  <!-- ============ CLIENTES ============ -->
+  <section class="tela" id="telaClientes" hidden>
+    <div class="cartao">
+      <div class="cartao-topo">
+        <h2>Clientes</h2>
+        <span class="dica" id="clientesResumo">—</span>
+      </div>
+      <div class="cartao-corpo">
+        <div class="campo busca">
+          <input id="buscaCliente" placeholder="Procurar por nome ou telefone" aria-label="Procurar cliente" />
+        </div>
+        <div id="listaClientes" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SERVIÇOS ============ -->
+  <section class="tela" id="telaServicos" hidden>
+    <div class="cartao">
+      <div class="cartao-topo">
+        <h2>Serviços</h2>
+        <span class="dica">Preço e duração usados no agendamento</span>
+      </div>
+      <div class="cartao-corpo" id="listaServicos"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo">
+        <h2>Profissionais</h2>
+        <span class="dica">Quem atende no salão</span>
+      </div>
+      <div class="cartao-corpo" id="listaProfissionais"></div>
+    </div>
+  </section>
+
+  <!-- ============ CAIXA ============ -->
+  <section class="tela" id="telaCaixa" hidden>
+    <div class="cartao">
+      <div class="cartao-topo">
+        <div class="mes-nav">
+          <button class="seta" id="caixaAnterior" aria-label="Mês anterior">&larr;</button>
+          <div class="titulo">
+            <strong id="caixaTitulo">—</strong>
+            <span>fechamento do mês</span>
+          </div>
+          <button class="seta" id="caixaProximo" aria-label="Próximo mês">&rarr;</button>
+        </div>
+      </div>
+      <div class="numeros" id="caixaNumeros"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo">
+        <h2>Quem está devendo</h2>
+        <span class="dica" id="avisoVencido" hidden></span>
+      </div>
+      <div class="cartao-corpo" id="caixaFiado"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo"><h2>Serviços mais feitos</h2></div>
+      <div class="cartao-corpo" id="caixaServicos"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo"><h2>Por profissional</h2></div>
+      <div class="cartao-corpo" id="caixaProfissionais"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo">
+        <h2>Clientes que sumiram</h2>
+        <span class="dica">sem vir há mais de 60 dias</span>
+      </div>
+      <div class="cartao-corpo" id="caixaSumidos"></div>
+    </div>
+  </section>
+
+  <!-- ============ LOJA ============
+       Independente da agenda: itens, vendas e lucro próprios. Nada
+       daqui entra no Caixa do salão, e nada de lá entra aqui. -->
+  <section class="tela" id="telaLoja" hidden>
+    <div class="cartao">
+      <div class="cartao-topo">
+        <div class="mes-nav">
+          <button class="seta" id="lojaAnterior" aria-label="Mês anterior">&larr;</button>
+          <div class="titulo">
+            <strong id="lojaTitulo">—</strong>
+            <span>vendas do mês</span>
+          </div>
+          <button class="seta" id="lojaProximo" aria-label="Próximo mês">&rarr;</button>
+        </div>
+      </div>
+      <div class="numeros" id="lojaNumeros"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo">
+        <h2>Vendas</h2>
+        <span class="dica" id="lojaVendasResumo">—</span>
+      </div>
+      <div class="cartao-corpo" id="lojaVendas"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo">
+        <h2>Meus itens</h2>
+        <span class="dica" id="lojaEstoqueResumo">—</span>
+      </div>
+      <div class="cartao-corpo">
+        <div class="fichas" id="lojaFiltro" style="margin-bottom:14px"></div>
+        <div id="lojaProdutos"></div>
+        <div class="linha-botoes" style="margin-top:14px">
+          <button class="btn" id="btnNovoProduto">+ Item</button>
+          <button class="btn" id="btnNovaCategoria">+ Classificação</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ AJUSTES ============ -->
+  <section class="tela" id="telaAjustes" hidden>
+    <div class="cartao" id="cartaoConta" hidden>
+      <div class="cartao-topo">
+        <h2>Sua conta</h2>
+        <span class="dica" id="estadoSync"></span>
+      </div>
+      <div class="cartao-corpo" id="corpoConta"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo"><h2>Horário de trabalho</h2></div>
+      <div class="cartao-corpo">
+        <div class="grade">
+          <div class="campo">
+            <label for="abre">Abre às</label>
+            <input type="time" id="abre" />
+          </div>
+          <div class="campo">
+            <label for="fecha">Fecha às</label>
+            <input type="time" id="fecha" />
+          </div>
+          <div class="campo largo">
+            <label>Dias em que o salão abre</label>
+            <div class="fichas" id="diasSemana"></div>
+          </div>
+          <div class="campo largo">
+            <label for="intervalo">De quanto em quanto tempo mostrar os horários</label>
+            <select id="intervalo">
+              <option value="15">15 minutos</option>
+              <option value="30">30 minutos</option>
+              <option value="60">1 hora</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo"><h2>Onde a agenda fica guardada</h2></div>
+      <div class="cartao-corpo">
+        <p style="font-size:13.5px;color:var(--tinta-2)" id="ondeGuardado"></p>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo"><h2>Instalar no celular</h2></div>
+      <div class="cartao-corpo">
+        <p style="font-size:13.5px;color:var(--tinta-2)">
+          No Android, abra o menu do navegador e toque em <b>Instalar aplicativo</b> ou
+          <b>Adicionar à tela inicial</b>. No iPhone, toque em <b>Compartilhar</b> e depois em
+          <b>Adicionar à Tela de Início</b>. A agenda passa a abrir como aplicativo, sem barra de
+          navegador, e funciona sem internet.
+        </p>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <div class="cartao-topo"><h2>Apagar tudo</h2></div>
+      <div class="cartao-corpo">
+        <p style="font-size:13.5px;color:var(--tinta-2);margin-bottom:13px">
+          Remove todos os agendamentos, clientes e serviços deste aparelho. O que já subiu para
+          a sua conta continua no servidor e volta na próxima sincronização. Não dá para desfazer.
+        </p>
+        <button class="btn btn-perigo" id="btnApagarTudo">Apagar tudo</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<button class="fab" id="fabNovo">+ Agendar</button>
+
+<div class="veu" id="veu" hidden>
+  <div class="janela" role="dialog" aria-modal="true" aria-labelledby="janelaTitulo">
+    <div class="puxador"></div>
+    <div class="janela-topo">
+      <h2 id="janelaTitulo">—</h2>
+      <p id="janelaDetalhe"></p>
+    </div>
+    <div class="janela-corpo" id="janelaCorpo"></div>
+    <div class="janela-pe" id="janelaPe"></div>
+  </div>
+</div>
+
+<div class="recado" id="recado" hidden></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Onde tudo mora: localStorage deste aparelho, numa chave só.
+   Nada sai daqui — não há servidor, conta nem internet envolvida.
+   ============================================================ */
+
+var CHAVE = "agenda-salao.v1";
+
+function padrao() {
+  return {
+    config: {
+      nome: "Meu Salão",
+      abre: "08:00",
+      fecha: "19:00",
+      intervalo: 30,
+      dias: [1, 2, 3, 4, 5, 6]          // 0 = domingo
+    },
+    clientes: [],
+    servicos: [
+      { id: "s1", nome: "Corte", min: 40, preco: 50 },
+      { id: "s2", nome: "Escova", min: 40, preco: 45 },
+      { id: "s3", nome: "Coloração", min: 120, preco: 180 },
+      { id: "s4", nome: "Luzes", min: 180, preco: 260 },
+      { id: "s5", nome: "Hidratação", min: 60, preco: 80 },
+      { id: "s6", nome: "Progressiva", min: 180, preco: 300 },
+      { id: "s7", nome: "Manicure", min: 45, preco: 35 },
+      { id: "s8", nome: "Pedicure", min: 50, preco: 40 },
+      { id: "s9", nome: "Sobrancelha", min: 20, preco: 25 },
+      { id: "s10", nome: "Maquiagem", min: 60, preco: 120 }
+    ],
+    profissionais: [{ id: "p1", nome: "Eu" }],
+    agenda: []
+  };
+}
+
+/* ============================================================
+   LOJA — gaveta própria
+   Guardada com uma chave só dela e em tabelas só dela. A agenda não
+   lê nada daqui, e o Caixa do salão não soma um centavo da loja: são
+   dois negócios dentro do mesmo aplicativo.
+   ============================================================ */
+
+var CHAVE_LOJA = "agenda-salao.loja.v1";
+
+function padraoLoja() {
+  return {
+    categorias: [
+      { id: "c1", nome: "Produtos capilares", ordem: 1 },
+      { id: "c2", nome: "Acessórios", ordem: 2 }
+    ],
+    produtos: [],
+    vendas: []
+  };
+}
+
+function carregarLoja() {
+  try {
+    var cru = localStorage.getItem(CHAVE_LOJA);
+    if (!cru) return padraoLoja();
+    var l = JSON.parse(cru);
+    l.categorias = l.categorias || [];
+    l.produtos = l.produtos || [];
+    l.vendas = l.vendas || [];
+    return l;
+  } catch (e) { return padraoLoja(); }
+}
+
+function salvarLoja() {
+  try { localStorage.setItem(CHAVE_LOJA, JSON.stringify(loja)); } catch (e) {}
+  gravarNoBancoLoja(loja);
+  if (typeof marcarSujo === "function") marcarSujo(true);
+  if (typeof agendarSync === "function") agendarSync();
+}
+
+var dados = carregar();
+var loja = carregarLoja();
+var mesLoja = primeiroDoMes(new Date());
+var filtroCategoria = "";
+var mesVisto = primeiroDoMes(new Date());
+var diaVisto = hojeIso();
+var mesCaixa = primeiroDoMes(new Date());
+var telaAtual = "agenda";
+
+function carregar() {
+  try {
+    var cru = localStorage.getItem(CHAVE);
+    if (!cru) return padrao();
+    var d = JSON.parse(cru);
+    var base = padrao();
+    d.config = Object.assign(base.config, d.config || {});
+    d.clientes = d.clientes || [];
+    d.servicos = d.servicos || [];
+    d.profissionais = d.profissionais && d.profissionais.length ? d.profissionais : base.profissionais;
+    d.agenda = d.agenda || [];
+    return d;
+  } catch (e) {
+    return padrao();
+  }
+}
+
+/* ---------- guardar em dois lugares ----------
+   localStorage é rápido e sempre está lá na hora de abrir, mas é a
+   primeira coisa que o navegador descarta quando o aparelho aperta o
+   armazenamento. O IndexedDB é a gaveta de verdade do aplicativo:
+   maior, e o navegador só mexe nele em último caso — e nem isso, se o
+   pedido de armazenamento permanente for aceito.
+
+   Então gravamos nos dois. Ao abrir, se o localStorage tiver sido
+   limpo e o IndexedDB ainda tiver a agenda, ela volta sozinha.
+
+   O que nenhum dos dois resolve: desinstalar o navegador ou o
+   aplicativo apaga tudo junto, e celular perdido leva junto também.
+   Contra isso serve a conta no servidor, logo abaixo. */
+
+/* ---------- servidor ----------
+   O aparelho continua gravando tudo aqui dentro, como sempre — é o que
+   faz a agenda funcionar sem sinal, no meio do atendimento. O servidor
+   entra por cima: manda o que mudou e traz o que mudou em outro
+   aparelho. Enquanto url e chave estiverem vazias, o app roda inteiro
+   offline e nenhuma tela de conta aparece. */
+
+var SERVIDOR = {
+  url: "https://myrbsqbwhojomutejtsx.supabase.co",
+  chave: "sb_publishable_m75pu9W0-ZeSxk9kNETzyg_8C_107d_",
+  dominio: "agenda-salao.local"
+};
+
+var SESSAO = "agenda-salao.sessao.v1";
+var SUJO = "agenda-salao.sujo.";
+var LIXO = "agenda-salao.lixo.";
+
+var sessao = null;
+try { sessao = JSON.parse(localStorage.getItem(SESSAO) || "null"); } catch (e) { sessao = null; }
+var conta = sessao ? { id: sessao.uid, usuario: sessao.usuario } : null;
+var estadoSync = "";
+var syncAgendado = null;
+var lojaSemTabela = false;   // banco ainda sem as tabelas loja_* (02-loja.sql não rodado)
+
+function temServidor() {
+  return !!(SERVIDOR.url && SERVIDOR.chave && window.fetch);
+}
+
+var BD = null;
+var bdPronto = abrirBanco();
+
+function abrirBanco() {
+  return new Promise(function (ok) {
+    if (!window.indexedDB) { ok(null); return; }
+    try {
+      var req = indexedDB.open("agenda-salao", 1);
+      req.onupgradeneeded = function () {
+        var b = req.result;
+        if (!b.objectStoreNames.contains("dados")) b.createObjectStore("dados");
+      };
+      req.onsuccess = function () { BD = req.result; ok(BD); };
+      req.onerror = function () { ok(null); };
+    } catch (e) { ok(null); }
+  });
+}
+
+function gravarNoBanco(obj) {
+  return bdPronto.then(function (b) {
+    if (!b) return false;
+    return new Promise(function (ok) {
+      try {
+        var t = b.transaction("dados", "readwrite");
+        t.objectStore("dados").put(JSON.stringify(obj), CHAVE);
+        t.oncomplete = function () { ok(true); };
+        t.onerror = function () { ok(false); };
+      } catch (e) { ok(false); }
+    });
+  });
+}
+
+function gravarNoBancoLoja(obj) {
+  return bdPronto.then(function (b) {
+    if (!b) return false;
+    return new Promise(function (ok) {
+      try {
+        var t = b.transaction("dados", "readwrite");
+        t.objectStore("dados").put(JSON.stringify(obj), CHAVE_LOJA);
+        t.oncomplete = function () { ok(true); };
+        t.onerror = function () { ok(false); };
+      } catch (e) { ok(false); }
+    });
+  });
+}
+
+function lerDoBancoLoja() {
+  return bdPronto.then(function (b) {
+    if (!b) return null;
+    return new Promise(function (ok) {
+      try {
+        var t = b.transaction("dados", "readonly");
+        var r = t.objectStore("dados").get(CHAVE_LOJA);
+        r.onsuccess = function () { ok(r.result ? JSON.parse(r.result) : null); };
+        r.onerror = function () { ok(null); };
+      } catch (e) { ok(null); }
+    });
+  });
+}
+
+function lerDoBanco() {
+  return bdPronto.then(function (b) {
+    if (!b) return null;
+    return new Promise(function (ok) {
+      try {
+        var t = b.transaction("dados", "readonly");
+        var r = t.objectStore("dados").get(CHAVE);
+        r.onsuccess = function () { ok(r.result ? JSON.parse(r.result) : null); };
+        r.onerror = function () { ok(null); };
+      } catch (e) { ok(null); }
+    });
+  });
+}
+
+/* O aviso importa: sem servidor, um armazenamento cheio ou bloqueado
+   significa trabalho perdido, e é melhor a dona saber na hora. */
+function salvar() {
+  var deuCerto = true;
+  try {
+    localStorage.setItem(CHAVE, JSON.stringify(dados));
+  } catch (e) {
+    deuCerto = false;
+  }
+  gravarNoBanco(dados).then(function (foi) {
+    // só reclama quando os DOIS falharam: aí o trabalho está mesmo em risco
+    if (!foi && !deuCerto) recado("Não deu para guardar neste aparelho — verifique o espaço livre.");
+  });
+  if (typeof marcarSujo === "function") marcarSujo(true);
+  if (typeof agendarSync === "function") agendarSync();
+  return deuCerto;
+}
+
+/* Pede ao sistema para tratar estes dados como permanentes. Quando o
+   navegador aceita, ele para de descartá-los sozinho para liberar
+   espaço. No Android costuma aceitar depois que o app é instalado na
+   tela inicial; se recusar, seguimos com o que dá. */
+function pedirArmazenamentoPermanente() {
+  if (!navigator.storage || !navigator.storage.persist) return Promise.resolve(false);
+  return navigator.storage.persisted().then(function (ja) {
+    return ja ? true : navigator.storage.persist();
+  }).catch(function () { return false; });
+}
+
+/* Se o localStorage foi limpo mas a gaveta grande ainda tem a agenda,
+   traz de volta sem pedir nada a ninguém. */
+function recuperarLojaSePreciso() {
+  return lerDoBancoLoja().then(function (guardada) {
+    if (!guardada) return false;
+    var vazioAqui = !loja.produtos.length && !loja.vendas.length;
+    var temLa = guardada.produtos.length || guardada.vendas.length;
+    if (!vazioAqui || !temLa) return false;
+    loja = guardada;
+    try { localStorage.setItem(CHAVE_LOJA, JSON.stringify(loja)); } catch (e) {}
+    return true;
+  });
+}
+
+function recuperarSePreciso() {
+  return lerDoBanco().then(function (guardado) {
+    if (!guardado || !guardado.agenda) return false;
+    var vazioAqui = !dados.agenda.length && !dados.clientes.length;
+    var temLa = guardado.agenda.length || (guardado.clientes || []).length;
+    if (!vazioAqui || !temLa) return false;
+    dados = guardado;
+    var base = padrao();
+    dados.config = Object.assign(base.config, dados.config || {});
+    dados.clientes = dados.clientes || [];
+    dados.profissionais = dados.profissionais && dados.profissionais.length ? dados.profissionais : base.profissionais;
+    try { localStorage.setItem(CHAVE, JSON.stringify(dados)); } catch (e) {}
+    partida();
+    recado("Agenda recuperada do armazenamento do aparelho.");
+    return true;
+  });
+}
+
+/* ---------------- utilidades ---------------- */
+
+function uid() {
+  return "i" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function doisDig(n) { return (n < 10 ? "0" : "") + n; }
+
+function iso(d) {
+  return d.getFullYear() + "-" + doisDig(d.getMonth() + 1) + "-" + doisDig(d.getDate());
+}
+
+function hojeIso() { return iso(new Date()); }
+
+function deIso(s) {
+  var p = String(s).split("-");
+  return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+}
+
+function primeiroDoMes(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+
+var MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+             "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+var DIAS_CURTOS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+function maiusculaInicial(s) {
+  return String(s).charAt(0).toUpperCase() + String(s).slice(1);
+}
+
+function mesAno(d) { return maiusculaInicial(MESES[d.getMonth()]) + " de " + d.getFullYear(); }
+
+function diaPorExtenso(s) {
+  var d = deIso(s);
+  return maiusculaInicial(DIAS_CURTOS[d.getDay()]) + ", " + d.getDate() + " de " + MESES[d.getMonth()];
+}
+
+function diaCurto(s) {
+  var d = deIso(s);
+  return doisDig(d.getDate()) + "/" + doisDig(d.getMonth() + 1);
+}
+
+function dinheiro(v) {
+  var n = Number(v) || 0;
+  return "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function minutosDe(hhmm) {
+  var p = String(hhmm || "0:0").split(":");
+  return Number(p[0]) * 60 + Number(p[1] || 0);
+}
+
+function horaDe(min) {
+  var m = Math.max(0, Math.round(min));
+  return doisDig(Math.floor(m / 60) % 24) + ":" + doisDig(m % 60);
+}
+
+function duracaoTexto(min) {
+  var h = Math.floor(min / 60), m = min % 60;
+  if (h && m) return h + "h" + doisDig(m);
+  if (h) return h + "h";
+  return m + " min";
+}
+
+function iniciais(nome) {
+  var p = String(nome || "?").trim().split(/\s+/);
+  return ((p[0] || "?")[0] + (p.length > 1 ? p[p.length - 1][0] : "")).toUpperCase();
+}
+
+function soDigitos(s) { return String(s || "").replace(/\D/g, ""); }
+
+function telefoneBonito(t) {
+  var d = soDigitos(t);
+  if (d.length === 11) return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
+  if (d.length === 10) return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+  return t || "";
+}
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function acharCliente(id) {
+  for (var i = 0; i < dados.clientes.length; i++) if (dados.clientes[i].id === id) return dados.clientes[i];
+  return null;
+}
+function acharServico(id) {
+  for (var i = 0; i < dados.servicos.length; i++) if (dados.servicos[i].id === id) return dados.servicos[i];
+  return null;
+}
+function acharProf(id) {
+  for (var i = 0; i < dados.profissionais.length; i++) if (dados.profissionais[i].id === id) return dados.profissionais[i];
+  return null;
+}
+
+function nomeDoHorario(h) {
+  var c = acharCliente(h.clienteId);
+  return c ? c.nome : (h.nome || "Sem nome");
+}
+
+function servicosTexto(h) {
+  var nomes = (h.servicoIds || []).map(function (id) {
+    var s = acharServico(id);
+    return s ? s.nome : null;
+  }).filter(Boolean);
+  return nomes.join(" + ") || "Serviço não informado";
+}
+
+function doDia(data) {
+  return dados.agenda.filter(function (h) { return h.data === data; })
+    .sort(function (a, b) { return minutosDe(a.hora) - minutosDe(b.hora); });
+}
+
+function contaDoDia(data) {
+  return dados.agenda.filter(function (h) { return h.data === data && h.status !== "cancelado"; }).length;
+}
+
+function abreNesteDia(data) {
+  return dados.config.dias.indexOf(deIso(data).getDay()) >= 0;
+}
+
+/* ============================================================
+   FALAR COM O SERVIDOR
+   ============================================================ */
+
+function postAuth(caminho, corpo) {
+  return fetch(SERVIDOR.url + "/auth/v1/" + caminho, {
+    method: "POST",
+    headers: { apikey: SERVIDOR.chave, "Content-Type": "application/json" },
+    body: JSON.stringify(corpo)
+  }).then(function (r) {
+    return r.json().then(function (j) { return { ok: r.ok, corpo: j }; },
+                         function () { return { ok: r.ok, corpo: {} }; });
+  });
+}
+
+function rest(metodo, caminho, corpo, tk, extra) {
+  var h = { apikey: SERVIDOR.chave, "Content-Type": "application/json" };
+  if (tk) h.Authorization = "Bearer " + tk;
+  if (extra) for (var k in extra) h[k] = extra[k];
+  return fetch(SERVIDOR.url + "/rest/v1/" + caminho, {
+    method: metodo, headers: h, body: corpo ? JSON.stringify(corpo) : undefined
+  }).then(function (r) {
+    if (r.status === 204) return { ok: r.ok, status: r.status, corpo: null };
+    return r.json().then(function (j) { return { ok: r.ok, status: r.status, corpo: j }; },
+                         function () { return { ok: r.ok, status: r.status, corpo: null }; });
+  });
+}
+
+/* o login do Supabase exige formato de e-mail; a dona só decora o usuário */
+function emailDe(usuario) {
+  return String(usuario).trim().toLowerCase().replace(/[^a-z0-9._-]/g, "") + "@" + SERVIDOR.dominio;
+}
+
+function guardarSessao(r, usuario) {
+  sessao = {
+    access: r.access_token,
+    refresh: r.refresh_token,
+    uid: r.user ? r.user.id : (sessao && sessao.uid),
+    usuario: usuario || (sessao && sessao.usuario),
+    vence: Date.now() + (Number(r.expires_in) || 3600) * 1000
+  };
+  conta = { id: sessao.uid, usuario: sessao.usuario };
+  try { localStorage.setItem(SESSAO, JSON.stringify(sessao)); } catch (e) {}
+}
+
+function esquecerSessao() {
+  sessao = null;
+  conta = null;
+  try { localStorage.removeItem(SESSAO); } catch (e) {}
+}
+
+function token() {
+  if (!sessao) return Promise.resolve(null);
+  if (Date.now() < sessao.vence - 60000) return Promise.resolve(sessao.access);
+  return postAuth("token?grant_type=refresh_token", { refresh_token: sessao.refresh })
+    .then(function (r) {
+      if (!r.ok || !r.corpo.access_token) return null;
+      guardarSessao(r.corpo);
+      return sessao.access;
+    }, function () { return null; });
+}
+
+function recadoDoServidor(r) {
+  var c = r && r.corpo;
+  return (c && (c.msg || c.message || c.error_description || c.error)) || "não deu certo";
+}
+
+function entrarNoServidor(usuario, senha) {
+  return postAuth("token?grant_type=password", { email: emailDe(usuario), password: senha })
+    .then(function (r) {
+      if (!r.ok || !r.corpo.access_token) return { erro: recadoDoServidor(r), recusado: true };
+      guardarSessao(r.corpo, usuario);
+      return { ok: true };
+    }, function () { return { erro: "sem internet", offline: true }; });
+}
+
+function criarContaNoServidor(usuario, senha) {
+  return postAuth("signup", { email: emailDe(usuario), password: senha })
+    .then(function (r) {
+      if (!r.ok) return { erro: recadoDoServidor(r) };
+      if (!r.corpo.access_token) return { erro: "o servidor ainda pede confirmação de e-mail" };
+      guardarSessao(r.corpo, usuario);
+      return { ok: true };
+    }, function () { return { erro: "sem internet", offline: true }; });
+}
+
+/* ---------- marcas de "tem coisa para mandar" ---------- */
+
+function chaveSujo() { return conta ? SUJO + conta.id : null; }
+function estaSujo() {
+  var k = chaveSujo();
+  try { return !!(k && localStorage.getItem(k)); } catch (e) { return false; }
+}
+function marcarSujo(v) {
+  var k = chaveSujo();
+  if (!k) return;
+  try { if (v) localStorage.setItem(k, "1"); else localStorage.removeItem(k); } catch (e) {}
+}
+
+function lixoVazio() {
+  return { clientes: [], servicos: [], profissionais: [], horarios: [],
+           lojaCategorias: [], lojaProdutos: [], lojaVendas: [] };
+}
+function lixoDe() {
+  if (!conta) return lixoVazio();
+  try { return Object.assign(lixoVazio(), JSON.parse(localStorage.getItem(LIXO + conta.id) || "{}")); }
+  catch (e) { return lixoVazio(); }
+}
+function guardarLixo(l) {
+  if (!conta) return;
+  try { localStorage.setItem(LIXO + conta.id, JSON.stringify(l)); } catch (e) {}
+}
+function jogarNoLixo(tipo, id) {
+  if (!conta) return;
+  var l = lixoDe();
+  if (l[tipo].indexOf(id) < 0) l[tipo].push(id);
+  guardarLixo(l);
+}
+
+function marcarSync(texto) {
+  estadoSync = texto;
+  var el = document.getElementById("estadoSync");
+  if (el) el.textContent = texto;
+}
+
+function agendarSync(atraso) {
+  if (!temServidor() || !sessao) return;
+  clearTimeout(syncAgendado);
+  syncAgendado = setTimeout(function () { sincronizar(); }, atraso === undefined ? 1800 : atraso);
+}
+
+/* ---------- sincronizar ----------
+   Manda o que mudou, apaga o que foi apagado e traz o que veio de
+   outro aparelho. A exclusão só sai da fila quando o servidor
+   confirma: rest() não estoura em erro, então limpar a fila sem
+   olhar a resposta faria o registro apagado ressuscitar na próxima
+   descida. */
+
+function sincronizar(aoFim) {
+  if (!temServidor() || !sessao) { if (aoFim) aoFim(); return; }
+  marcarSync("enviando…");
+
+  token().then(function (tk) {
+    if (!tk) { marcarSync("entre de novo para sincronizar"); if (aoFim) aoFim(); return; }
+    var dono = conta.id;
+    var l = lixoDe();
+    var sobrou = lixoVazio();
+
+    var apagar = [];
+    function apagarLista(tipo, tabela) {
+      (l[tipo] || []).forEach(function (id) {
+        apagar.push(
+          rest("DELETE", tabela + "?dono=eq." + dono + "&id=eq." + encodeURIComponent(id), null, tk)
+            .then(function (r) { if (!r || !r.ok) sobrou[tipo].push(id); },
+                  function () { sobrou[tipo].push(id); })
+        );
+      });
+    }
+    apagarLista("horarios", "agenda_horarios");
+    apagarLista("clientes", "agenda_clientes");
+    apagarLista("servicos", "agenda_servicos");
+    apagarLista("profissionais", "agenda_profissionais");
+    apagarLista("lojaVendas", "loja_vendas");
+    apagarLista("lojaProdutos", "loja_produtos");
+    apagarLista("lojaCategorias", "loja_categorias");
+
+    Promise.all(apagar).then(function () {
+      // relê: pode ter sido apagada mais coisa durante o envio
+      var pend = lixoDe();
+      Object.keys(sobrou).forEach(function (tipo) {
+        var tentados = {};
+        (l[tipo] || []).forEach(function (x) { tentados[x] = true; });
+        pend[tipo] = sobrou[tipo].concat((pend[tipo] || []).filter(function (x) { return !tentados[x]; }));
+      });
+      guardarLixo(pend);
+      var faltou = Object.keys(sobrou).some(function (t) { return sobrou[t].length; });
+      if (faltou) marcarSujo(true);
+
+      if (!estaSujo()) return null;
+
+      var envios = [
+        rest("POST", "agenda_config", {
+          dono: dono, nome: dados.config.nome, abre: dados.config.abre,
+          fecha: dados.config.fecha, intervalo: dados.config.intervalo, dias: dados.config.dias
+        }, tk, { Prefer: "resolution=merge-duplicates" })
+      ];
+      if (dados.clientes.length) envios.push(rest("POST", "agenda_clientes", dados.clientes.map(function (c) {
+        return { id: c.id, dono: dono, nome: c.nome, tel: c.tel || null, obs: c.obs || null, desde: c.desde || null };
+      }), tk, { Prefer: "resolution=merge-duplicates" }));
+      if (dados.servicos.length) envios.push(rest("POST", "agenda_servicos", dados.servicos.map(function (s) {
+        return { id: s.id, dono: dono, nome: s.nome, min: s.min, preco: s.preco };
+      }), tk, { Prefer: "resolution=merge-duplicates" }));
+      if (dados.profissionais.length) envios.push(rest("POST", "agenda_profissionais", dados.profissionais.map(function (p) {
+        return { id: p.id, dono: dono, nome: p.nome };
+      }), tk, { Prefer: "resolution=merge-duplicates" }));
+      if (dados.agenda.length) envios.push(rest("POST", "agenda_horarios", dados.agenda.map(function (h) {
+        return { id: h.id, dono: dono, data: h.data, hora: h.hora, min: h.min,
+                 cliente_id: h.clienteId || null, nome: h.nome || null,
+                 servico_ids: h.servicoIds || [], prof_id: h.profId || null,
+                 valor: h.valor, status: h.status, obs: h.obs || null,
+                 pagamento: h.pagamento || null };
+      }), tk, { Prefer: "resolution=merge-duplicates" }));
+
+      // a loja sobe junto, mas em tabelas só dela
+      var enviosLoja = [];
+      if (loja.categorias.length) enviosLoja.push(rest("POST", "loja_categorias", loja.categorias.map(function (c) {
+        return { id: c.id, dono: dono, nome: c.nome, ordem: c.ordem || null };
+      }), tk, { Prefer: "resolution=merge-duplicates" }));
+      if (loja.produtos.length) enviosLoja.push(rest("POST", "loja_produtos", loja.produtos.map(function (p) {
+        return { id: p.id, dono: dono, categoria_id: p.categoriaId || null, nome: p.nome,
+                 custo: p.custo, preco: p.preco, estoque: p.estoque, obs: p.obs || null };
+      }), tk, { Prefer: "resolution=merge-duplicates" }));
+      if (loja.vendas.length) enviosLoja.push(rest("POST", "loja_vendas", loja.vendas.map(function (v) {
+        return { id: v.id, dono: dono, data: v.data, itens: v.itens || [], total: v.total,
+                 custo: v.custo, cliente_id: v.clienteId || null, nome: v.nome || null,
+                 pago: !!v.pago, pago_em: v.pagoEm || null, obs: v.obs || null };
+      }), tk, { Prefer: "resolution=merge-duplicates" }));
+
+      return Promise.all(envios.concat(enviosLoja)).then(function (rr) {
+        var daLoja = rr.slice(envios.length);
+        /* Tabela da loja que ainda não foi criada no banco responde 404.
+           Isso não pode deixar a agenda marcada como pendente para
+           sempre, reenviando tudo a cada sincronização — a loja
+           simplesmente fica no aparelho até o SQL ser rodado. */
+        var lojaFaltando = daLoja.length && daLoja.every(function (r) { return r && r.status === 404; });
+        if (lojaFaltando) lojaSemTabela = true;
+
+        var okAgenda = rr.slice(0, envios.length).every(function (r) { return r && r.ok; });
+        var okLoja = lojaFaltando || daLoja.every(function (r) { return r && r.ok; });
+        if (okAgenda && okLoja) marcarSujo(false);
+        return null;
+      });
+    }).then(function () {
+      return puxarLojaDoServidor(tk);
+    }).then(function (novaLoja) {
+      if (novaLoja) {
+        loja = novaLoja;
+        try { localStorage.setItem(CHAVE_LOJA, JSON.stringify(loja)); } catch (e) {}
+        gravarNoBancoLoja(loja);
+      }
+      return puxarDoServidor(tk);
+    }).then(function (novo) {
+      if (novo) {
+        dados = novo;
+        try { localStorage.setItem(CHAVE, JSON.stringify(dados)); } catch (e) {}
+        gravarNoBanco(dados);
+      }
+      desenhar();
+      marcarSync(lojaSemTabela
+        ? "agenda guardada · loja só no aparelho"
+        : "tudo guardado · " + horaAgora());
+      if (aoFim) aoFim();
+    }, function () {
+      marcarSync("sem internet — vai quando voltar");
+      if (aoFim) aoFim();
+    });
+  });
+}
+
+function puxarLojaDoServidor(tk) {
+  var dono = conta.id;
+  return Promise.all([
+    rest("GET", "loja_categorias?dono=eq." + dono + "&select=*", null, tk),
+    rest("GET", "loja_produtos?dono=eq." + dono + "&select=*", null, tk),
+    rest("GET", "loja_vendas?dono=eq." + dono + "&select=*", null, tk)
+  ]).then(function (rr) {
+    // tabela ainda não criada no banco: a loja segue só no aparelho
+    if (!rr.every(function (r) { return r.ok && Array.isArray(r.corpo); })) return null;
+
+    var nova = { categorias: [], produtos: [], vendas: [] };
+    nova.categorias = rr[0].corpo.map(function (c) {
+      return { id: c.id, nome: c.nome, ordem: c.ordem || 99 };
+    });
+    nova.produtos = rr[1].corpo.map(function (p) {
+      return { id: p.id, categoriaId: p.categoria_id || "", nome: p.nome,
+               custo: Number(p.custo) || 0, preco: Number(p.preco) || 0,
+               estoque: Number(p.estoque) || 0, obs: p.obs || "" };
+    });
+    nova.vendas = rr[2].corpo.map(function (v) {
+      return { id: v.id, data: v.data, itens: v.itens || [], total: Number(v.total) || 0,
+               custo: Number(v.custo) || 0, clienteId: v.cliente_id || "", nome: v.nome || "",
+               pago: !!v.pago, pagoEm: v.pago_em || null, obs: v.obs || "" };
+    });
+    // servidor sem nada não pode apagar a loja que já existe aqui
+    if (!nova.categorias.length && !nova.produtos.length && !nova.vendas.length) return null;
+    return nova;
+  }, function () { return null; });
+}
+
+function puxarDoServidor(tk) {
+  var dono = conta.id;
+  return Promise.all([
+    rest("GET", "agenda_horarios?dono=eq." + dono + "&select=*", null, tk),
+    rest("GET", "agenda_clientes?dono=eq." + dono + "&select=*", null, tk),
+    rest("GET", "agenda_servicos?dono=eq." + dono + "&select=*", null, tk),
+    rest("GET", "agenda_profissionais?dono=eq." + dono + "&select=*", null, tk),
+    rest("GET", "agenda_config?dono=eq." + dono + "&select=*", null, tk)
+  ]).then(function (rr) {
+    if (!rr.every(function (r) { return r.ok && (r.corpo === null || Array.isArray(r.corpo)); })) return null;
+
+    var novo = padrao();
+
+    novo.agenda = (rr[0].corpo || []).map(function (h) {
+      return { id: h.id, data: h.data, hora: h.hora, min: Number(h.min) || 30,
+               clienteId: h.cliente_id || "", nome: h.nome || "",
+               servicoIds: h.servico_ids || [], profId: h.prof_id || "",
+               valor: Number(h.valor) || 0, status: h.status || "marcado", obs: h.obs || "",
+               pagamento: h.pagamento || null };
+    });
+    novo.clientes = (rr[1].corpo || []).map(function (c) {
+      return { id: c.id, nome: c.nome, tel: c.tel || "", obs: c.obs || "", desde: c.desde || "" };
+    });
+    var servs = (rr[2].corpo || []).map(function (s) {
+      return { id: s.id, nome: s.nome, min: Number(s.min) || 30, preco: Number(s.preco) || 0 };
+    });
+    // servidor vazio não pode zerar a tabela de preços que veio de fábrica
+    if (servs.length) novo.servicos = servs;
+    var profs = (rr[3].corpo || []).map(function (p) { return { id: p.id, nome: p.nome }; });
+    if (profs.length) novo.profissionais = profs;
+
+    var cfg = (rr[4].corpo || [])[0];
+    if (cfg) {
+      novo.config = {
+        nome: cfg.nome || dados.config.nome,
+        abre: cfg.abre || dados.config.abre,
+        fecha: cfg.fecha || dados.config.fecha,
+        intervalo: Number(cfg.intervalo) || dados.config.intervalo,
+        dias: Array.isArray(cfg.dias) ? cfg.dias : dados.config.dias
+      };
+    } else {
+      novo.config = dados.config;
+    }
+    novo.armazenamentoPermanente = dados.armazenamentoPermanente;
+    return novo;
+  });
+}
+
+function horaAgora() {
+  var d = new Date();
+  return doisDig(d.getHours()) + ":" + doisDig(d.getMinutes());
+}
+
+/* ---------------- recado e janela ---------------- */
+
+var recadoTimer = null;
+function recado(texto) {
+  var el = document.getElementById("recado");
+  el.textContent = texto;
+  el.hidden = false;
+  clearTimeout(recadoTimer);
+  recadoTimer = setTimeout(function () { el.hidden = true; }, 3200);
+}
+
+var janelaAoFechar = null;
+
+function abrirJanela(op) {
+  document.getElementById("janelaTitulo").textContent = op.titulo || "";
+  var det = document.getElementById("janelaDetalhe");
+  det.textContent = op.detalhe || "";
+  det.hidden = !op.detalhe;
+  document.getElementById("janelaCorpo").innerHTML = op.corpo || "";
+
+  var pe = document.getElementById("janelaPe");
+  pe.innerHTML = "";
+  (op.botoes || []).forEach(function (b) {
+    var el = document.createElement("button");
+    el.className = "btn " + (b.classe || "");
+    el.textContent = b.texto;
+    el.addEventListener("click", function () {
+      if (b.acao) { if (b.acao() === false) return; }
+      if (b.fecha !== false) fecharJanela();
+    });
+    pe.appendChild(el);
+  });
+
+  janelaAoFechar = op.aoFechar || null;
+  document.getElementById("veu").hidden = false;
+  if (op.pronto) op.pronto();
+}
+
+function fecharJanela() {
+  document.getElementById("veu").hidden = true;
+  if (janelaAoFechar) { var f = janelaAoFechar; janelaAoFechar = null; f(); }
+}
+
+function perguntar(titulo, detalhe, textoOk, perigo, aoConfirmar) {
+  abrirJanela({
+    titulo: titulo, detalhe: detalhe, corpo: "",
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: textoOk, classe: perigo ? "btn-perigo" : "btn-forte", acao: aoConfirmar }
+    ]
+  });
+}
+
+document.getElementById("veu").addEventListener("click", function (e) {
+  if (e.target === this) fecharJanela();
+});
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && !document.getElementById("veu").hidden) fecharJanela();
+});
+
+/* ---------------- navegação ---------------- */
+
+function mostrarTela(nome) {
+  telaAtual = nome;
+  var mapa = { agenda: "telaAgenda", clientes: "telaClientes", servicos: "telaServicos",
+               caixa: "telaCaixa", loja: "telaLoja", ajustes: "telaAjustes" };
+  Object.keys(mapa).forEach(function (k) {
+    document.getElementById(mapa[k]).hidden = (k !== nome);
+  });
+  document.querySelectorAll("#abas .aba").forEach(function (b) {
+    if (b.getAttribute("data-tela") === nome) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  document.getElementById("fabNovo").hidden = (nome === "caixa" || nome === "ajustes");
+  document.getElementById("fabNovo").textContent =
+    nome === "clientes" ? "+ Cliente" : nome === "servicos" ? "+ Serviço" :
+    nome === "loja" ? "+ Vender" : "+ Agendar";
+  window.scrollTo(0, 0);
+  desenhar();
+}
+
+document.getElementById("abas").addEventListener("click", function (e) {
+  var b = e.target.closest(".aba");
+  if (b) mostrarTela(b.getAttribute("data-tela"));
+});
+
+/* ============================================================
+   CALENDÁRIO
+   Um mês por vez, seis linhas fixas para a grade não pular de
+   altura quando o mês vira. Cada dia mostra até três pontinhos:
+   é a leitura rápida de "esse dia está cheio" sem abrir nada.
+   ============================================================ */
+
+function desenharMes() {
+  document.getElementById("mesTitulo").textContent = mesAno(mesVisto);
+
+  var ini = new Date(mesVisto.getFullYear(), mesVisto.getMonth(), 1);
+  var comeco = new Date(ini);
+  comeco.setDate(1 - ini.getDay());               // volta até o domingo
+
+  var g = document.getElementById("gradeMes");
+  g.innerHTML = "";
+  var hoje = hojeIso();
+  var noMes = 0, atendidosMes = 0, dinheiroMes = 0;
+
+  for (var i = 0; i < 42; i++) {
+    var d = new Date(comeco.getFullYear(), comeco.getMonth(), comeco.getDate() + i);
+    var s = iso(d);
+    var fora = d.getMonth() !== mesVisto.getMonth();
+    var quantos = contaDoDia(s);
+
+    /* A cor conta a situação do dia, nesta ordem de prioridade:
+       já passou → cinza (não há mais o que agendar ali)
+       tem cliente → verde
+       salão fechado → hachurado (não é falta de agendamento)
+       resto → rosa, o dia livre esperando cliente */
+    var estado = fora ? ""
+      : s < hoje ? " passado"
+      : quantos ? " marcado"
+      : !abreNesteDia(s) ? " fechado"
+      : " livre";
+
+    var b = document.createElement("button");
+    b.className = "dia" + (fora ? " fora" : "") + estado + (s === hoje ? " hoje" : "");
+    b.setAttribute("aria-pressed", s === diaVisto ? "true" : "false");
+    b.setAttribute("data-dia", s);
+    b.setAttribute("aria-label", diaPorExtenso(s) + ", " + quantos + " agendamento(s)");
+
+    var pontos = "";
+    var n = Math.min(quantos, 3);
+    for (var j = 0; j < n; j++) pontos += "<i></i>";
+    b.innerHTML = "<span>" + d.getDate() + "</span><span class=\"pontos\">" + pontos + "</span>";
+    g.appendChild(b);
+
+    if (!fora) {
+      dados.agenda.forEach(function (h) {
+        if (h.data !== s) return;
+        if (h.status === "cancelado") return;
+        noMes++;
+        if (h.status === "atendido") { atendidosMes++; dinheiroMes += Number(h.valor) || 0; }
+      });
+    }
+  }
+
+  document.getElementById("mesResumo").textContent =
+    noMes ? noMes + " agendamento(s) · " + atendidosMes + " atendido(s) · " + dinheiro(dinheiroMes)
+          : "nenhum agendamento neste mês";
+}
+
+document.getElementById("gradeMes").addEventListener("click", function (e) {
+  var b = e.target.closest(".dia");
+  if (!b) return;
+  diaVisto = b.getAttribute("data-dia");
+  var d = deIso(diaVisto);
+  if (d.getMonth() !== mesVisto.getMonth() || d.getFullYear() !== mesVisto.getFullYear()) {
+    mesVisto = primeiroDoMes(d);
+  }
+  desenhar();
+});
+
+document.getElementById("mesAnterior").addEventListener("click", function () {
+  mesVisto = new Date(mesVisto.getFullYear(), mesVisto.getMonth() - 1, 1);
+  desenhar();
+});
+document.getElementById("mesProximo").addEventListener("click", function () {
+  mesVisto = new Date(mesVisto.getFullYear(), mesVisto.getMonth() + 1, 1);
+  desenhar();
+});
+document.getElementById("btnHoje").addEventListener("click", function () {
+  diaVisto = hojeIso();
+  mesVisto = primeiroDoMes(new Date());
+  mesCaixa = primeiroDoMes(new Date());
+  if (telaAtual !== "agenda") mostrarTela("agenda"); else desenhar();
+});
+
+/* ============================================================
+   AGENDA DO DIA
+   Mistura o que já está marcado com os horários livres, na ordem
+   do relógio. Tocar num horário livre já abre o agendamento com
+   a hora preenchida — é o caminho mais curto entre "a cliente
+   ligou" e "está na agenda".
+   ============================================================ */
+
+function ocupado(h, inicio, fim) {
+  var a = minutosDe(h.hora), b = a + (Number(h.min) || 30);
+  return a < fim && inicio < b;
+}
+
+function desenharDia() {
+  document.getElementById("diaTitulo").textContent = diaPorExtenso(diaVisto);
+  var lista = doDia(diaVisto);
+  var caixa = document.getElementById("listaDia");
+
+  var validos = lista.filter(function (h) { return h.status !== "cancelado"; });
+  var somaPrevista = validos.reduce(function (t, h) { return t + (Number(h.valor) || 0); }, 0);
+  document.getElementById("diaResumo").textContent =
+    validos.length ? validos.length + " cliente(s) · " + dinheiro(somaPrevista)
+                   : (abreNesteDia(diaVisto) ? "dia livre" : "salão fechado");
+
+  var abre = minutosDe(dados.config.abre);
+  var fecha = minutosDe(dados.config.fecha);
+  var passo = Number(dados.config.intervalo) || 30;
+  var html = "";
+
+  if (!lista.length && !abreNesteDia(diaVisto)) {
+    caixa.innerHTML = "<div class=\"vazio\"><b>Salão fechado</b>" +
+      "Este dia da semana está marcado como fechado em Ajustes.<br />" +
+      "Dá para agendar assim mesmo, se for um encaixe.</div>";
+    return;
+  }
+
+  var marcados = 0;
+  for (var t = abre; t < fecha; t += passo) {
+    var noSlot = lista.filter(function (h) { return ocupado(h, t, t + passo); });
+    var comecamAqui = noSlot.filter(function (h) { return minutosDe(h.hora) >= t && minutosDe(h.hora) < t + passo; });
+
+    comecamAqui.forEach(function (h) {
+      marcados++;
+      html += cartaoHorario(h);
+    });
+
+    if (!noSlot.length) {
+      html += "<button class=\"vago\" data-vago=\"" + horaDe(t) + "\">" +
+              "<b>" + horaDe(t) + "</b><span>livre — tocar para agendar</span></button>";
+    }
+  }
+
+  // encaixes fora do horário de funcionamento não podem sumir da tela
+  var foraDoExpediente = lista.filter(function (h) {
+    var m = minutosDe(h.hora);
+    return m < abre || m >= fecha;
+  });
+  if (foraDoExpediente.length) {
+    html = foraDoExpediente.filter(function (h) { return minutosDe(h.hora) < abre; }).map(cartaoHorario).join("") +
+           html +
+           foraDoExpediente.filter(function (h) { return minutosDe(h.hora) >= fecha; }).map(cartaoHorario).join("");
+    marcados += foraDoExpediente.length;
+  }
+
+  if (!marcados && !html) {
+    html = "<div class=\"vazio\"><b>Nada marcado ainda</b>Toque em <b>+ Agendar</b> para começar.</div>";
+  }
+  caixa.innerHTML = html;
+}
+
+function cartaoHorario(h) {
+  var selo = h.status === "atendido" ? "<span class=\"selo ok\">atendido</span>"
+           : h.status === "faltou" ? "<span class=\"selo aviso\">faltou</span>"
+           : h.status === "cancelado" ? "<span class=\"selo frio\">cancelado</span>" : "";
+  var falta = emAbertoDe(h);
+  if (falta && h.status !== "cancelado") {
+    selo += " <span class=\"selo " + (estaVencido(h) ? "aviso" : "") + "\">" +
+      (h.pagamento.tipo === "parcelado" ? "parcelado" : "fiado") + "</span>";
+  }
+  var prof = acharProf(h.profId);
+  return "<button class=\"hora st-" + esc(h.status || "marcado") + "\" data-hora=\"" + esc(h.id) + "\">" +
+    "<span class=\"quando\"><b>" + esc(h.hora) + "</b><small>" + duracaoTexto(Number(h.min) || 30) + "</small></span>" +
+    "<span class=\"quem\"><b>" + esc(nomeDoHorario(h)) + " " + selo + "</b>" +
+      "<small>" + esc(servicosTexto(h)) + (prof && dados.profissionais.length > 1 ? " · " + esc(prof.nome) : "") + "</small></span>" +
+    "<span class=\"valor\">" + dinheiro(h.valor) +
+      (falta ? "<br /><small style=\"color:var(--alerta)\">deve " + dinheiro(falta) + "</small>" : "") +
+    "</span></button>";
+}
+
+document.getElementById("listaDia").addEventListener("click", function (e) {
+  var vago = e.target.closest(".vago");
+  if (vago) { formAgendamento(null, vago.getAttribute("data-vago")); return; }
+  var marcado = e.target.closest(".hora");
+  if (marcado) verHorario(marcado.getAttribute("data-hora"));
+});
+
+/* ---------------- ver um agendamento ---------------- */
+
+function verHorario(id) {
+  var h = dados.agenda.filter(function (x) { return x.id === id; })[0];
+  if (!h) return;
+  var c = acharCliente(h.clienteId);
+  var prof = acharProf(h.profId);
+  var tel = c && c.tel ? soDigitos(c.tel) : "";
+
+  var corpo = "<div class=\"item\"><span class=\"av\">" + esc(iniciais(nomeDoHorario(h))) + "</span>" +
+    "<span class=\"txt\"><b>" + esc(nomeDoHorario(h)) + "</b><small>" +
+    (tel ? esc(telefoneBonito(c.tel)) : "sem telefone") + "</small></span></div>" +
+    "<div class=\"item\"><span class=\"txt\"><b>" + esc(servicosTexto(h)) + "</b>" +
+    "<small>" + duracaoTexto(Number(h.min) || 30) + " · " + dinheiro(h.valor) +
+    (prof ? " · " + esc(prof.nome) : "") + "</small></span></div>" +
+    (h.obs ? "<div class=\"item\"><span class=\"txt\"><small>Observação</small><b style=\"font-weight:500;font-size:14px\">" + esc(h.obs) + "</b></span></div>" : "") +
+    listaParcelas(h) +
+    "<div style=\"margin-top:14px\" class=\"linha-botoes\">" +
+      (tel ? "<a class=\"btn\" target=\"_blank\" rel=\"noopener\" href=\"https://wa.me/55" + esc(tel) +
+             "?text=" + encodeURIComponent(lembrete(h)) + "\">Lembrar no WhatsApp</a>" : "") +
+      "<button class=\"btn\" data-acao=\"editar\">Editar</button>" +
+    "</div>" +
+    "<div style=\"margin-top:8px\" class=\"linha-botoes\">" +
+      "<button class=\"btn\" data-acao=\"atendido\">Atendeu</button>" +
+      "<button class=\"btn\" data-acao=\"faltou\">Faltou</button>" +
+      "<button class=\"btn btn-perigo\" data-acao=\"apagar\">Apagar</button>" +
+    "</div>";
+
+  abrirJanela({
+    titulo: h.hora + " · " + diaCurto(h.data),
+    detalhe: diaPorExtenso(h.data),
+    corpo: corpo,
+    botoes: [{ texto: "Fechar", classe: "" }],
+    pronto: function () {
+      document.getElementById("janelaCorpo").addEventListener("click", function (e) {
+        var par = e.target.closest("[data-parcela]");
+        if (par) {
+          var i = Number(par.getAttribute("data-parcela"));
+          var p = h.pagamento.parcelas[i];
+          p.pago = !p.pago;
+          p.pagoEm = p.pago ? hojeIso() : null;
+          salvar();
+          fecharJanela();
+          desenhar();
+          recado(p.pago ? "Recebido: " + dinheiro(p.valor) + "." : "Parcela voltou para em aberto.");
+          return;
+        }
+        var b = e.target.closest("[data-acao]");
+        if (!b) return;
+        var acao = b.getAttribute("data-acao");
+        if (acao === "editar") { fecharJanela(); formAgendamento(h.id); return; }
+        if (acao === "apagar") {
+          fecharJanela();
+          perguntar("Apagar este agendamento?",
+            nomeDoHorario(h) + ", " + h.hora + " de " + diaCurto(h.data) + ". Não dá para desfazer.",
+            "Apagar", true, function () {
+              dados.agenda = dados.agenda.filter(function (x) { return x.id !== h.id; });
+              jogarNoLixo("horarios", h.id);
+              salvar(); desenhar(); recado("Agendamento apagado.");
+            });
+          return;
+        }
+        h.status = (h.status === acao) ? "marcado" : acao;
+        salvar(); fecharJanela(); desenhar();
+        recado(h.status === "atendido" ? "Marcado como atendido." :
+               h.status === "faltou" ? "Marcado como falta." : "Voltou para agendado.");
+      });
+    }
+  });
+}
+
+/* As parcelas dentro da ficha do horário, cada uma com o botão de
+   dar baixa. É aqui que a dona diz "recebi". */
+function listaParcelas(h) {
+  if (!h.pagamento) return "";
+  var pg = h.pagamento;
+  var titulo = pg.tipo === "parcelado" ? "Parcelas" : "Fiado";
+  var linhas = pg.parcelas.map(function (p, i) {
+    var atrasada = !p.pago && p.vence < hojeIso();
+    return "<div class=\"item\">" +
+      "<span class=\"txt\"><b>" +
+        (pg.tipo === "parcelado" ? p.n + "ª de " + pg.parcelas.length + " · " : "") +
+        dinheiro(p.valor) + " " +
+        (p.pago ? "<span class=\"selo ok\">pago</span>"
+                : atrasada ? "<span class=\"selo aviso\">vencido</span>" : "") +
+      "</b><small>" +
+        (p.pago ? "recebido em " + diaCurto(p.pagoEm || p.vence) : "vence em " + diaCurto(p.vence)) +
+      "</small></span>" +
+      "<span class=\"acoes\"><button class=\"btn btn-leve btn-mini\" data-parcela=\"" + i + "\">" +
+        (p.pago ? "desfazer" : "recebi") + "</button></span></div>";
+  }).join("");
+
+  var falta = emAbertoDe(h);
+  return "<h3 style=\"margin:16px 0 2px\">" + titulo + "</h3>" + linhas +
+    "<p style=\"font-size:12.5px;color:" + (falta ? "var(--alerta)" : "var(--ok)") + ";margin-top:6px\">" +
+    (falta ? "Em aberto: " + dinheiro(falta) : "Tudo pago.") + "</p>";
+}
+
+function lembrete(h) {
+  return "Oi, " + nomeDoHorario(h).split(" ")[0] + "! Passando para confirmar seu horário no " +
+    dados.config.nome + ": " + servicosTexto(h) + " em " + diaCurto(h.data) + " às " + h.hora + ". Até lá!";
+}
+
+/* ============================================================
+   AGENDAR
+   Escolher os serviços já preenche duração e preço, somando quando
+   for mais de um. Os dois campos continuam editáveis: promoção,
+   cliente antiga, cabelo que demora mais — a agenda não discute.
+   ============================================================ */
+
+function formAgendamento(id, horaSugerida) {
+  var h = id ? dados.agenda.filter(function (x) { return x.id === id; })[0] : null;
+  var novo = !h;
+  if (novo) {
+    h = { id: uid(), data: diaVisto, hora: horaSugerida || proximaHoraLivre(),
+          min: 40, clienteId: "", nome: "", servicoIds: [], profId: dados.profissionais[0].id,
+          valor: 0, status: "marcado", obs: "" };
+  }
+
+  var opcoesCli = "<option value=\"\">— cliente nova ou avulsa —</option>" +
+    dados.clientes.slice().sort(porNome).map(function (c) {
+      return "<option value=\"" + esc(c.id) + "\"" + (c.id === h.clienteId ? " selected" : "") + ">" + esc(c.nome) + "</option>";
+    }).join("");
+
+  var opcoesProf = dados.profissionais.map(function (p) {
+    return "<option value=\"" + esc(p.id) + "\"" + (p.id === h.profId ? " selected" : "") + ">" + esc(p.nome) + "</option>";
+  }).join("");
+
+  var fichasServ = dados.servicos.map(function (s) {
+    var on = (h.servicoIds || []).indexOf(s.id) >= 0;
+    return "<button type=\"button\" class=\"ficha\" data-serv=\"" + esc(s.id) + "\" aria-pressed=\"" + on + "\">" +
+      esc(s.nome) + "</button>";
+  }).join("");
+
+  var pag = h.pagamento || null;
+  var tipoPag = pag ? pag.tipo : "avista";
+  var vezesAtual = pag && pag.parcelas ? pag.parcelas.length : 2;
+  var primeiroVence = (pag && pag.parcelas && pag.parcelas[0]) ? pag.parcelas[0].vence : h.data;
+  var vezesOpcoes = "";
+  for (var v = 2; v <= 12; v++) {
+    vezesOpcoes += "<option value=\"" + v + "\"" + (v === vezesAtual ? " selected" : "") + ">" + v + "x</option>";
+  }
+
+  var corpo =
+    "<div class=\"grade\">" +
+      "<div class=\"campo largo\"><label for=\"fCli\">Cliente</label><select id=\"fCli\">" + opcoesCli + "</select></div>" +
+      "<div class=\"campo largo\" id=\"caixaNome\"" + (h.clienteId ? " hidden" : "") + ">" +
+        "<label for=\"fNome\">Nome</label><input id=\"fNome\" value=\"" + esc(h.nome) + "\" placeholder=\"Como chamar a cliente\" />" +
+        "<small>Ao salvar, ela entra na lista de clientes.</small></div>" +
+      "<div class=\"campo largo\" id=\"caixaTel\"" + (h.clienteId ? " hidden" : "") + ">" +
+        "<label for=\"fTel\">WhatsApp (opcional)</label><input id=\"fTel\" inputmode=\"numeric\" placeholder=\"DDD + número\" /></div>" +
+      "<div class=\"campo largo\"><label>Serviços</label><div class=\"fichas\" id=\"fServ\">" + fichasServ + "</div></div>" +
+      "<div class=\"campo\"><label for=\"fData\">Dia</label><input type=\"date\" id=\"fData\" value=\"" + esc(h.data) + "\" /></div>" +
+      "<div class=\"campo\"><label for=\"fHora\">Hora</label><input type=\"time\" id=\"fHora\" value=\"" + esc(h.hora) + "\" /></div>" +
+      "<div class=\"campo\"><label for=\"fMin\">Duração (minutos)</label><input type=\"number\" id=\"fMin\" min=\"5\" step=\"5\" value=\"" + (Number(h.min) || 40) + "\" /></div>" +
+      "<div class=\"campo\"><label for=\"fValor\">Valor (R$)</label><input type=\"number\" id=\"fValor\" min=\"0\" step=\"0.01\" value=\"" + (Number(h.valor) || 0) + "\" /></div>" +
+      (dados.profissionais.length > 1
+        ? "<div class=\"campo largo\"><label for=\"fProf\">Profissional</label><select id=\"fProf\">" + opcoesProf + "</select></div>" : "") +
+      "<div class=\"campo largo\"><label>Pagamento</label>" +
+        "<div class=\"fichas\" id=\"fPag\">" +
+          "<button type=\"button\" class=\"ficha\" data-pag=\"avista\" aria-pressed=\"" + (tipoPag === "avista") + "\">À vista</button>" +
+          "<button type=\"button\" class=\"ficha\" data-pag=\"fiado\" aria-pressed=\"" + (tipoPag === "fiado") + "\">Fiado</button>" +
+          "<button type=\"button\" class=\"ficha\" data-pag=\"parcelado\" aria-pressed=\"" + (tipoPag === "parcelado") + "\">Parcelado</button>" +
+        "</div></div>" +
+      "<div class=\"campo\" id=\"caixaVezes\"" + (tipoPag === "parcelado" ? "" : " hidden") + ">" +
+        "<label for=\"fVezes\">Em quantas vezes</label>" +
+        "<select id=\"fVezes\">" + vezesOpcoes + "</select></div>" +
+      "<div class=\"campo\" id=\"caixaVence\"" + (tipoPag === "avista" ? " hidden" : "") + ">" +
+        "<label for=\"fVence\">" + (tipoPag === "parcelado" ? "1ª parcela vence" : "Combinou de pagar em") + "</label>" +
+        "<input type=\"date\" id=\"fVence\" value=\"" + esc(primeiroVence) + "\" /></div>" +
+      "<p class=\"largo\" id=\"fResumoPag\" style=\"font-size:12.5px;color:var(--fraco);margin:0\"></p>" +
+      "<div class=\"campo largo\"><label for=\"fObs\">Observação</label>" +
+        "<textarea id=\"fObs\" placeholder=\"Cor usada, alergia, preferência…\">" + esc(h.obs) + "</textarea></div>" +
+    "</div>" +
+    "<p class=\"aviso-campo\" id=\"fAviso\"></p>";
+
+  abrirJanela({
+    titulo: novo ? "Novo agendamento" : "Editar agendamento",
+    detalhe: novo ? "Os serviços preenchem duração e preço sozinhos." : "",
+    corpo: corpo,
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: novo ? "Agendar" : "Salvar", classe: "btn-forte", acao: function () { return guardarAgendamento(h, novo); } }
+    ],
+    pronto: function () {
+      var sel = document.getElementById("fCli");
+      sel.addEventListener("change", function () {
+        var temCliente = !!sel.value;
+        document.getElementById("caixaNome").hidden = temCliente;
+        document.getElementById("caixaTel").hidden = temCliente;
+      });
+      document.getElementById("fServ").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-serv]");
+        if (!b) return;
+        b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+        recalcular();
+      });
+
+      // as três formas de pagamento se excluem: uma acesa por vez
+      document.getElementById("fPag").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-pag]");
+        if (!b) return;
+        document.querySelectorAll("#fPag [data-pag]").forEach(function (x) {
+          x.setAttribute("aria-pressed", x === b ? "true" : "false");
+        });
+        var tipo = b.getAttribute("data-pag");
+        document.getElementById("caixaVezes").hidden = (tipo !== "parcelado");
+        document.getElementById("caixaVence").hidden = (tipo === "avista");
+        var rot = document.querySelector("#caixaVence label");
+        if (rot) rot.textContent = tipo === "parcelado" ? "1ª parcela vence" : "Combinou de pagar em";
+        var venc = document.getElementById("fVence");
+        if (!venc.value) venc.value = document.getElementById("fData").value;
+        resumoPagamento();
+      });
+
+      document.getElementById("fVezes").addEventListener("change", resumoPagamento);
+      document.getElementById("fValor").addEventListener("input", resumoPagamento);
+      document.getElementById("fVence").addEventListener("change", resumoPagamento);
+      resumoPagamento();
+    }
+  });
+
+  /* Mostra em palavras o que vai ser gravado: "3x de R$ 60,00, a
+     primeira em 10/09". Parcela quebrada não pode sumir centavo — o
+     resto vai na primeira. */
+  function resumoPagamento() {
+    var el = document.getElementById("fResumoPag");
+    if (!el) return;
+    var tipo = tipoEscolhido();
+    var valor = Number(document.getElementById("fValor").value) || 0;
+    if (tipo === "avista" || !valor) { el.textContent = ""; return; }
+    var venc = document.getElementById("fVence").value || document.getElementById("fData").value;
+    if (tipo === "fiado") {
+      el.textContent = "Fica devendo " + dinheiro(valor) +
+        (venc ? ", para pagar em " + diaCurto(venc) : "") + ".";
+      return;
+    }
+    var n = Number(document.getElementById("fVezes").value) || 2;
+    var partes = dividirValor(valor, n);
+    el.textContent = n + "x de " + dinheiro(partes[n - 1]) +
+      (partes[0] !== partes[n - 1] ? " (a 1ª de " + dinheiro(partes[0]) + ")" : "") +
+      (venc ? ", a primeira em " + diaCurto(venc) : "") + ".";
+  }
+
+  function tipoEscolhido() {
+    var b = document.querySelector("#fPag [aria-pressed=\"true\"]");
+    return b ? b.getAttribute("data-pag") : "avista";
+  }
+
+  function recalcular() {
+    var min = 0, valor = 0, algum = false;
+    document.querySelectorAll("#fServ [data-serv]").forEach(function (b) {
+      if (b.getAttribute("aria-pressed") !== "true") return;
+      var s = acharServico(b.getAttribute("data-serv"));
+      if (!s) return;
+      algum = true;
+      min += Number(s.min) || 0;
+      valor += Number(s.preco) || 0;
+    });
+    if (!algum) return;
+    document.getElementById("fMin").value = min;
+    document.getElementById("fValor").value = valor.toFixed(2);
+  }
+}
+
+function proximaHoraLivre() {
+  var abre = minutosDe(dados.config.abre);
+  var fecha = minutosDe(dados.config.fecha);
+  var passo = Number(dados.config.intervalo) || 30;
+  var lista = doDia(diaVisto);
+  for (var t = abre; t < fecha; t += passo) {
+    var livre = !lista.some(function (h) { return h.status !== "cancelado" && ocupado(h, t, t + passo); });
+    if (livre) return horaDe(t);
+  }
+  return dados.config.abre;
+}
+
+function porNome(a, b) {
+  return String(a.nome).localeCompare(String(b.nome), "pt-BR");
+}
+
+/* ============================================================
+   FIADO E PARCELAS
+   R$ 100 em 3x não dá 33,33 três vezes: falta um centavo. A sobra
+   vai para a primeira parcela, que é como se cobra na prática.
+   ============================================================ */
+
+function dividirValor(total, vezes) {
+  var centavos = Math.round((Number(total) || 0) * 100);
+  var base = Math.floor(centavos / vezes);
+  var sobra = centavos - base * vezes;
+  var partes = [];
+  for (var i = 0; i < vezes; i++) partes.push((base + (i === 0 ? sobra : 0)) / 100);
+  return partes;
+}
+
+function somarMeses(dataIso, meses) {
+  var d = deIso(dataIso);
+  var dia = d.getDate();
+  var alvo = new Date(d.getFullYear(), d.getMonth() + meses, 1);
+  // dia 31 caindo em mês de 30: fica no último dia do mês, não pula para o seguinte
+  var ultimo = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+  alvo.setDate(Math.min(dia, ultimo));
+  return iso(alvo);
+}
+
+function montarPagamento(tipo, valor, vezes, primeiroVence, anterior) {
+  if (tipo === "avista") return null;
+  var n = tipo === "fiado" ? 1 : Math.max(2, Number(vezes) || 2);
+  var partes = dividirValor(valor, n);
+  var antes = (anterior && anterior.parcelas) || [];
+  var parcelas = [];
+  for (var i = 0; i < n; i++) {
+    var velha = antes[i];
+    parcelas.push({
+      n: i + 1,
+      valor: partes[i],
+      vence: somarMeses(primeiroVence, i),
+      // editar o agendamento não pode desmarcar uma parcela já recebida
+      pago: !!(velha && velha.pago),
+      pagoEm: (velha && velha.pago) ? velha.pagoEm : null
+    });
+  }
+  return { tipo: tipo, parcelas: parcelas };
+}
+
+function emAbertoDe(h) {
+  if (!h.pagamento) return 0;
+  return h.pagamento.parcelas.reduce(function (t, p) {
+    return t + (p.pago ? 0 : (Number(p.valor) || 0));
+  }, 0);
+}
+
+function totalPagoDe(h) {
+  if (!h.pagamento) return 0;
+  return h.pagamento.parcelas.reduce(function (t, p) {
+    return t + (p.pago ? (Number(p.valor) || 0) : 0);
+  }, 0);
+}
+
+function proximaParcela(h) {
+  if (!h.pagamento) return null;
+  return h.pagamento.parcelas.filter(function (p) { return !p.pago; })[0] || null;
+}
+
+function estaVencido(h) {
+  var p = proximaParcela(h);
+  return !!(p && p.vence < hojeIso());
+}
+
+/* Todo mundo que deve alguma coisa, agrupado por cliente. */
+function devedores() {
+  var mapa = {};
+  dados.agenda.forEach(function (h) {
+    if (h.status === "cancelado") return;
+    var falta = emAbertoDe(h);
+    if (!falta) return;
+    var chave = h.clienteId || ("avulso:" + nomeDoHorario(h));
+    if (!mapa[chave]) {
+      mapa[chave] = { nome: nomeDoHorario(h), clienteId: h.clienteId, total: 0, vencido: 0, proxima: null, horarios: [] };
+    }
+    var d = mapa[chave];
+    d.total += falta;
+    if (estaVencido(h)) d.vencido += falta;
+    d.horarios.push(h);
+    var p = proximaParcela(h);
+    if (p && (!d.proxima || p.vence < d.proxima)) d.proxima = p.vence;
+  });
+  return Object.keys(mapa).map(function (k) { return mapa[k]; })
+    .sort(function (a, b) { return (a.proxima || "9") < (b.proxima || "9") ? -1 : 1; });
+}
+
+function guardarAgendamento(h, novo) {
+  var aviso = document.getElementById("fAviso");
+  var clienteId = document.getElementById("fCli").value;
+  var nome = (document.getElementById("fNome") || {}).value || "";
+  var tel = (document.getElementById("fTel") || {}).value || "";
+  var data = document.getElementById("fData").value;
+  var hora = document.getElementById("fHora").value;
+
+  if (!clienteId && !nome.trim()) { aviso.textContent = "Diga o nome da cliente."; return false; }
+  if (!data) { aviso.textContent = "Escolha o dia."; return false; }
+  if (!hora) { aviso.textContent = "Escolha a hora."; return false; }
+
+  var servicoIds = [];
+  document.querySelectorAll("#fServ [data-serv]").forEach(function (b) {
+    if (b.getAttribute("aria-pressed") === "true") servicoIds.push(b.getAttribute("data-serv"));
+  });
+
+  // cliente avulsa entra na lista: da segunda vez em diante ela já aparece no seletor
+  if (!clienteId) {
+    var achada = dados.clientes.filter(function (c) {
+      return c.nome.trim().toLowerCase() === nome.trim().toLowerCase();
+    })[0];
+    if (achada) {
+      clienteId = achada.id;
+      if (tel && !achada.tel) achada.tel = tel;
+    } else {
+      var c = { id: uid(), nome: nome.trim(), tel: tel.trim(), obs: "", desde: hojeIso() };
+      dados.clientes.push(c);
+      clienteId = c.id;
+    }
+  }
+
+  h.clienteId = clienteId;
+  h.nome = "";
+  h.data = data;
+  h.hora = hora;
+  h.min = Number(document.getElementById("fMin").value) || 30;
+  h.valor = Number(document.getElementById("fValor").value) || 0;
+  h.servicoIds = servicoIds;
+  h.obs = document.getElementById("fObs").value.trim();
+  var selProf = document.getElementById("fProf");
+  if (selProf) h.profId = selProf.value;
+
+  var tipoPagEscolhido = (document.querySelector("#fPag [aria-pressed=\"true\"]") || {}).getAttribute
+    ? document.querySelector("#fPag [aria-pressed=\"true\"]").getAttribute("data-pag") : "avista";
+  h.pagamento = montarPagamento(
+    tipoPagEscolhido,
+    h.valor,
+    document.getElementById("fVezes").value,
+    document.getElementById("fVence").value || h.data,
+    h.pagamento
+  );
+
+  /* Choque de horário avisa, mas não impede: encaixe entre duas clientes
+     é rotina no salão, e a agenda não pode ser mais teimosa que a dona. */
+  var choque = dados.agenda.filter(function (x) {
+    return x.id !== h.id && x.data === h.data && x.status !== "cancelado" &&
+           x.profId === h.profId && ocupado(x, minutosDe(h.hora), minutosDe(h.hora) + h.min);
+  })[0];
+
+  if (novo) dados.agenda.push(h);
+  salvar();
+  diaVisto = h.data;
+  mesVisto = primeiroDoMes(deIso(h.data));
+  desenhar();
+
+  if (choque) {
+    recado("Atenção: encosta no horário de " + nomeDoHorario(choque) + " (" + choque.hora + ").");
+  } else {
+    recado(novo ? "Agendado para " + diaCurto(h.data) + " às " + h.hora + "." : "Agendamento salvo.");
+  }
+  return true;
+}
+
+/* ============================================================
+   CLIENTES
+   ============================================================ */
+
+function historicoDe(clienteId) {
+  return dados.agenda.filter(function (h) { return h.clienteId === clienteId; })
+    .sort(function (a, b) { return a.data < b.data ? 1 : -1; });
+}
+
+function desenharClientes() {
+  var termo = (document.getElementById("buscaCliente").value || "").trim().toLowerCase();
+  var digitos = soDigitos(termo);
+  var lista = dados.clientes.slice().sort(porNome).filter(function (c) {
+    if (!termo) return true;
+    if (c.nome.toLowerCase().indexOf(termo) >= 0) return true;
+    // só procura por telefone quando o que foi digitado tem número:
+    // indexOf("") devolve 0 e faria toda cliente passar no filtro
+    return digitos ? soDigitos(c.tel).indexOf(digitos) >= 0 : false;
+  });
+
+  document.getElementById("clientesResumo").textContent =
+    dados.clientes.length + " cadastrada(s)";
+
+  var caixa = document.getElementById("listaClientes");
+  if (!dados.clientes.length) {
+    caixa.innerHTML = "<div class=\"vazio\"><b>Nenhuma cliente ainda</b>" +
+      "Toda cliente agendada entra aqui sozinha.</div>";
+    return;
+  }
+  if (!lista.length) {
+    caixa.innerHTML = "<div class=\"vazio\"><b>Nada encontrado</b>Tente outro nome ou telefone.</div>";
+    return;
+  }
+
+  caixa.innerHTML = lista.map(function (c) {
+    var hist = historicoDe(c.id);
+    var atendidos = hist.filter(function (h) { return h.status === "atendido"; });
+    var ultima = atendidos[0];
+    var futuro = hist.filter(function (h) { return h.data >= hojeIso() && h.status === "marcado"; }).pop();
+    var recado_ = futuro ? "próximo: " + diaCurto(futuro.data) + " às " + futuro.hora
+                : ultima ? "última vez: " + diaCurto(ultima.data)
+                : "ainda não veio";
+    return "<div class=\"item\"><span class=\"av\">" + esc(iniciais(c.nome)) + "</span>" +
+      "<span class=\"txt\"><b>" + esc(c.nome) + "</b><small>" + esc(recado_) +
+      (c.tel ? " · " + esc(telefoneBonito(c.tel)) : "") + "</small></span>" +
+      "<span class=\"acoes\"><button class=\"btn btn-leve btn-mini\" data-cli=\"" + esc(c.id) + "\">abrir</button></span></div>";
+  }).join("");
+}
+
+document.getElementById("buscaCliente").addEventListener("input", desenharClientes);
+document.getElementById("listaClientes").addEventListener("click", function (e) {
+  var b = e.target.closest("[data-cli]");
+  if (b) verCliente(b.getAttribute("data-cli"));
+});
+
+function verCliente(id) {
+  var c = acharCliente(id);
+  if (!c) return;
+  var hist = historicoDe(id);
+  var atendidos = hist.filter(function (h) { return h.status === "atendido"; });
+  var gasto = atendidos.reduce(function (t, h) { return t + (Number(h.valor) || 0); }, 0);
+  var faltas = hist.filter(function (h) { return h.status === "faltou"; }).length;
+  var tel = soDigitos(c.tel);
+
+  var linhas = hist.slice(0, 12).map(function (h) {
+    var selo = h.status === "atendido" ? "<span class=\"selo ok\">atendido</span>"
+             : h.status === "faltou" ? "<span class=\"selo aviso\">faltou</span>"
+             : h.status === "cancelado" ? "<span class=\"selo frio\">cancelado</span>"
+             : "<span class=\"selo\">marcado</span>";
+    return "<div class=\"item\"><span class=\"txt\"><b>" + diaCurto(h.data) + " · " + esc(h.hora) + " " + selo + "</b>" +
+      "<small>" + esc(servicosTexto(h)) + " · " + dinheiro(h.valor) + "</small></span></div>";
+  }).join("");
+
+  abrirJanela({
+    titulo: c.nome,
+    detalhe: (tel ? telefoneBonito(c.tel) + " · " : "") + atendidos.length + " atendimento(s) · " + dinheiro(gasto) +
+             (faltas ? " · " + faltas + " falta(s)" : ""),
+    corpo:
+      "<div class=\"linha-botoes\" style=\"margin-bottom:14px\">" +
+        (tel ? "<a class=\"btn\" target=\"_blank\" rel=\"noopener\" href=\"https://wa.me/55" + esc(tel) + "\">WhatsApp</a>" : "") +
+        "<button class=\"btn\" data-acao=\"agendar\">Agendar</button>" +
+        "<button class=\"btn\" data-acao=\"editar\">Editar</button>" +
+      "</div>" +
+      (c.obs ? "<p style=\"font-size:13.5px;color:var(--tinta-2);margin-bottom:12px\">" + esc(c.obs) + "</p>" : "") +
+      "<h3 style=\"margin-bottom:6px\">Histórico</h3>" +
+      (linhas || "<div class=\"vazio\">Nenhum atendimento ainda.</div>"),
+    botoes: [{ texto: "Fechar", classe: "" }],
+    pronto: function () {
+      document.getElementById("janelaCorpo").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-acao]");
+        if (!b) return;
+        fecharJanela();
+        if (b.getAttribute("data-acao") === "agendar") {
+          mostrarTela("agenda");
+          setTimeout(function () {
+            formAgendamento(null, null);
+            var sel = document.getElementById("fCli");
+            if (sel) { sel.value = c.id; sel.dispatchEvent(new Event("change")); }
+          }, 30);
+        } else {
+          formCliente(c.id);
+        }
+      });
+    }
+  });
+}
+
+function formCliente(id) {
+  var c = id ? acharCliente(id) : null;
+  var novo = !c;
+  if (novo) c = { id: uid(), nome: "", tel: "", obs: "", desde: hojeIso() };
+
+  abrirJanela({
+    titulo: novo ? "Nova cliente" : "Editar cliente",
+    corpo:
+      "<div class=\"grade\">" +
+        "<div class=\"campo largo\"><label for=\"cNome\">Nome</label><input id=\"cNome\" value=\"" + esc(c.nome) + "\" /></div>" +
+        "<div class=\"campo largo\"><label for=\"cTel\">WhatsApp</label><input id=\"cTel\" inputmode=\"numeric\" value=\"" + esc(c.tel) + "\" placeholder=\"DDD + número\" /></div>" +
+        "<div class=\"campo largo\"><label for=\"cObs\">Observações</label><textarea id=\"cObs\" placeholder=\"Cor da tintura, alergia, preferências…\">" + esc(c.obs) + "</textarea></div>" +
+      "</div><p class=\"aviso-campo\" id=\"cAviso\"></p>" +
+      (novo ? "" : "<button class=\"btn btn-perigo\" style=\"width:100%;margin-top:6px\" data-acao=\"apagar\">Apagar cliente</button>"),
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: "Salvar", classe: "btn-forte", acao: function () {
+        var nome = document.getElementById("cNome").value.trim();
+        if (!nome) { document.getElementById("cAviso").textContent = "Diga o nome."; return false; }
+        c.nome = nome;
+        c.tel = document.getElementById("cTel").value.trim();
+        c.obs = document.getElementById("cObs").value.trim();
+        if (novo) dados.clientes.push(c);
+        salvar(); desenhar(); recado("Cliente salva.");
+      } }
+    ],
+    pronto: function () {
+      var b = document.querySelector("#janelaCorpo [data-acao=apagar]");
+      if (!b) return;
+      b.addEventListener("click", function () {
+        fecharJanela();
+        var quantos = historicoDe(c.id).length;
+        perguntar("Apagar " + c.nome + "?",
+          quantos ? "Os " + quantos + " agendamento(s) dela continuam na agenda, mas sem ficha." : "Não dá para desfazer.",
+          "Apagar", true, function () {
+            dados.clientes = dados.clientes.filter(function (x) { return x.id !== c.id; });
+            jogarNoLixo("clientes", c.id);
+            salvar(); desenhar(); recado("Cliente apagada.");
+          });
+      });
+    }
+  });
+}
+
+/* ============================================================
+   SERVIÇOS E PROFISSIONAIS
+   ============================================================ */
+
+function desenharServicos() {
+  var caixa = document.getElementById("listaServicos");
+  caixa.innerHTML = dados.servicos.length
+    ? dados.servicos.map(function (s) {
+        return "<div class=\"item\"><span class=\"txt\"><b>" + esc(s.nome) + "</b>" +
+          "<small>" + duracaoTexto(Number(s.min) || 0) + " · " + dinheiro(s.preco) + "</small></span>" +
+          "<span class=\"acoes\"><button class=\"btn btn-leve btn-mini\" data-serv-edit=\"" + esc(s.id) + "\">editar</button></span></div>";
+      }).join("")
+    : "<div class=\"vazio\"><b>Nenhum serviço</b>Toque em <b>+ Serviço</b>.</div>";
+
+  var pf = document.getElementById("listaProfissionais");
+  pf.innerHTML = dados.profissionais.map(function (p) {
+    var quantos = dados.agenda.filter(function (h) { return h.profId === p.id; }).length;
+    return "<div class=\"item\"><span class=\"av\">" + esc(iniciais(p.nome)) + "</span>" +
+      "<span class=\"txt\"><b>" + esc(p.nome) + "</b><small>" + quantos + " atendimento(s) na agenda</small></span>" +
+      "<span class=\"acoes\"><button class=\"btn btn-leve btn-mini\" data-prof-edit=\"" + esc(p.id) + "\">editar</button></span></div>";
+  }).join("") +
+    "<button class=\"btn\" style=\"width:100%;margin-top:12px\" id=\"btnNovoProf\">+ Profissional</button>";
+}
+
+document.getElementById("listaServicos").addEventListener("click", function (e) {
+  var b = e.target.closest("[data-serv-edit]");
+  if (b) formServico(b.getAttribute("data-serv-edit"));
+});
+document.getElementById("listaProfissionais").addEventListener("click", function (e) {
+  if (e.target.id === "btnNovoProf") { formProfissional(null); return; }
+  var b = e.target.closest("[data-prof-edit]");
+  if (b) formProfissional(b.getAttribute("data-prof-edit"));
+});
+
+function formServico(id) {
+  var s = id ? acharServico(id) : null;
+  var novo = !s;
+  if (novo) s = { id: uid(), nome: "", min: 40, preco: 0 };
+
+  abrirJanela({
+    titulo: novo ? "Novo serviço" : "Editar serviço",
+    detalhe: "Duração e preço entram sozinhos no agendamento.",
+    corpo:
+      "<div class=\"grade\">" +
+        "<div class=\"campo largo\"><label for=\"sNome\">Nome</label><input id=\"sNome\" value=\"" + esc(s.nome) + "\" /></div>" +
+        "<div class=\"campo\"><label for=\"sMin\">Duração (minutos)</label><input type=\"number\" id=\"sMin\" min=\"5\" step=\"5\" value=\"" + (Number(s.min) || 40) + "\" /></div>" +
+        "<div class=\"campo\"><label for=\"sPreco\">Preço (R$)</label><input type=\"number\" id=\"sPreco\" min=\"0\" step=\"0.01\" value=\"" + (Number(s.preco) || 0) + "\" /></div>" +
+      "</div><p class=\"aviso-campo\" id=\"sAviso\"></p>" +
+      (novo ? "" : "<button class=\"btn btn-perigo\" style=\"width:100%;margin-top:6px\" data-acao=\"apagar\">Apagar serviço</button>"),
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: "Salvar", classe: "btn-forte", acao: function () {
+        var nome = document.getElementById("sNome").value.trim();
+        if (!nome) { document.getElementById("sAviso").textContent = "Diga o nome do serviço."; return false; }
+        s.nome = nome;
+        s.min = Number(document.getElementById("sMin").value) || 30;
+        s.preco = Number(document.getElementById("sPreco").value) || 0;
+        if (novo) dados.servicos.push(s);
+        salvar(); desenhar(); recado("Serviço salvo.");
+      } }
+    ],
+    pronto: function () {
+      var b = document.querySelector("#janelaCorpo [data-acao=apagar]");
+      if (!b) return;
+      b.addEventListener("click", function () {
+        fecharJanela();
+        perguntar("Apagar " + s.nome + "?",
+          "Os agendamentos antigos continuam com o nome do serviço guardado.",
+          "Apagar", true, function () {
+            dados.servicos = dados.servicos.filter(function (x) { return x.id !== s.id; });
+            jogarNoLixo("servicos", s.id);
+            salvar(); desenhar(); recado("Serviço apagado.");
+          });
+      });
+    }
+  });
+}
+
+function formProfissional(id) {
+  var p = id ? acharProf(id) : null;
+  var novo = !p;
+  if (novo) p = { id: uid(), nome: "" };
+
+  abrirJanela({
+    titulo: novo ? "Novo profissional" : "Editar profissional",
+    corpo: "<div class=\"campo\"><label for=\"pNome\">Nome</label><input id=\"pNome\" value=\"" + esc(p.nome) + "\" /></div>" +
+      "<p class=\"aviso-campo\" id=\"pAviso\"></p>" +
+      (novo || dados.profissionais.length < 2 ? "" :
+        "<button class=\"btn btn-perigo\" style=\"width:100%;margin-top:6px\" data-acao=\"apagar\">Apagar</button>"),
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: "Salvar", classe: "btn-forte", acao: function () {
+        var nome = document.getElementById("pNome").value.trim();
+        if (!nome) { document.getElementById("pAviso").textContent = "Diga o nome."; return false; }
+        p.nome = nome;
+        if (novo) dados.profissionais.push(p);
+        salvar(); desenhar(); recado("Profissional salvo.");
+      } }
+    ],
+    pronto: function () {
+      var b = document.querySelector("#janelaCorpo [data-acao=apagar]");
+      if (!b) return;
+      b.addEventListener("click", function () {
+        fecharJanela();
+        perguntar("Apagar " + p.nome + "?", "Os atendimentos dele passam para o primeiro da lista.", "Apagar", true, function () {
+          var sobra = dados.profissionais.filter(function (x) { return x.id !== p.id; });
+          dados.agenda.forEach(function (h) { if (h.profId === p.id) h.profId = sobra[0].id; });
+          dados.profissionais = sobra;
+          jogarNoLixo("profissionais", p.id);
+          salvar(); desenhar(); recado("Profissional apagado.");
+        });
+      });
+    }
+  });
+}
+
+/* ============================================================
+   CAIXA
+   Só conta o que foi marcado como atendido. Agendamento não é
+   dinheiro no bolso — quem fecha o mês precisa da diferença.
+   ============================================================ */
+
+function desenharCaixa() {
+  document.getElementById("caixaTitulo").textContent = mesAno(mesCaixa);
+
+  var ini = iso(new Date(mesCaixa.getFullYear(), mesCaixa.getMonth(), 1));
+  var fim = iso(new Date(mesCaixa.getFullYear(), mesCaixa.getMonth() + 1, 0));
+  var doMes = dados.agenda.filter(function (h) { return h.data >= ini && h.data <= fim; });
+
+  var atendidos = doMes.filter(function (h) { return h.status === "atendido"; });
+  var faltas = doMes.filter(function (h) { return h.status === "faltou"; });
+  var marcados = doMes.filter(function (h) { return h.status === "marcado"; });
+
+  /* "Recebido" é o dinheiro que entrou mesmo: atendimento à vista deste
+     mês, mais as parcelas que foram pagas dentro do mês — inclusive de
+     atendimento antigo. O que ficou fiado não entra aqui, entra no
+     "a receber", senão o caixa mente. */
+  var recebido = 0;
+  atendidos.forEach(function (h) {
+    if (!h.pagamento) recebido += Number(h.valor) || 0;
+  });
+  dados.agenda.forEach(function (h) {
+    if (h.status === "cancelado" || !h.pagamento) return;
+    h.pagamento.parcelas.forEach(function (p) {
+      if (p.pago && p.pagoEm && p.pagoEm >= ini && p.pagoEm <= fim) recebido += Number(p.valor) || 0;
+    });
+  });
+
+  // tudo que ainda devem, de qualquer mês: dívida não fica presa ao calendário
+  var fiadoAberto = 0, fiadoVencido = 0;
+  dados.agenda.forEach(function (h) {
+    if (h.status === "cancelado") return;
+    var falta = emAbertoDe(h);
+    fiadoAberto += falta;
+    if (estaVencido(h)) fiadoVencido += falta;
+  });
+
+  var aReceber = marcados.reduce(function (t, h) { return t + (Number(h.valor) || 0); }, 0);
+  var ticket = atendidos.length ? atendidos.reduce(function (t, h) { return t + (Number(h.valor) || 0); }, 0) / atendidos.length : 0;
+
+  // número par de quadros: em duas colunas, um ímpar deixa um buraco
+  // rosa no fim da grade, com cara de cartão quebrado
+  document.getElementById("caixaNumeros").innerHTML =
+    quadro("Recebido no mês", dinheiro(recebido), "dinheiro") +
+    quadro("Fiado em aberto", dinheiro(fiadoAberto), fiadoVencido ? "atrasado" : "") +
+    quadro("Ainda marcado", dinheiro(aReceber), "") +
+    quadro("Atendimentos", String(atendidos.length), "") +
+    quadro("Ticket médio", dinheiro(ticket), "") +
+    quadro("Faltas", String(faltas.length), "");
+
+  var avisoFiado = document.getElementById("avisoVencido");
+  if (avisoFiado) {
+    avisoFiado.textContent = fiadoVencido ? dinheiro(fiadoVencido) + " já passou do combinado" : "";
+    avisoFiado.hidden = !fiadoVencido;
+  }
+
+  desenharFiado();
+
+  // serviços mais feitos
+  var porServico = {};
+  atendidos.forEach(function (h) {
+    (h.servicoIds || []).forEach(function (id) {
+      var s = acharServico(id);
+      var nome = s ? s.nome : "Outro";
+      porServico[nome] = (porServico[nome] || 0) + 1;
+    });
+  });
+  document.getElementById("caixaServicos").innerHTML = barras(porServico, "vez", "Nenhum atendimento fechado neste mês.");
+
+  // por profissional
+  var porProf = {};
+  atendidos.forEach(function (h) {
+    var p = acharProf(h.profId);
+    var nome = p ? p.nome : "Sem nome";
+    porProf[nome] = (porProf[nome] || 0) + (Number(h.valor) || 0);
+  });
+  document.getElementById("caixaProfissionais").innerHTML =
+    barras(porProf, "dinheiro", "Nenhum atendimento fechado neste mês.");
+
+  // clientes sumidas
+  var limite = new Date();
+  limite.setDate(limite.getDate() - 60);
+  var corte = iso(limite);
+  var sumidas = dados.clientes.map(function (c) {
+    var atendida = historicoDe(c.id).filter(function (h) { return h.status === "atendido"; })[0];
+    var futuro = dados.agenda.some(function (h) {
+      return h.clienteId === c.id && h.status === "marcado" && h.data >= hojeIso();
+    });
+    return { c: c, ultima: atendida ? atendida.data : null, futuro: futuro };
+  }).filter(function (x) {
+    return x.ultima && x.ultima < corte && !x.futuro;
+  }).sort(function (a, b) { return a.ultima < b.ultima ? -1 : 1; });
+
+  document.getElementById("caixaSumidos").innerHTML = sumidas.length
+    ? sumidas.slice(0, 15).map(function (x) {
+        var tel = soDigitos(x.c.tel);
+        return "<div class=\"item\"><span class=\"av\">" + esc(iniciais(x.c.nome)) + "</span>" +
+          "<span class=\"txt\"><b>" + esc(x.c.nome) + "</b><small>última vez em " + diaCurto(x.ultima) + "</small></span>" +
+          (tel ? "<span class=\"acoes\"><a class=\"btn btn-leve btn-mini\" target=\"_blank\" rel=\"noopener\" href=\"https://wa.me/55" +
+                 esc(tel) + "?text=" + encodeURIComponent(convite(x.c)) + "\">chamar</a></span>" : "") +
+          "</div>";
+      }).join("")
+    : "<div class=\"vazio\"><b>Ninguém sumido</b>Todas as clientes vieram nos últimos 60 dias ou já têm horário marcado.</div>";
+}
+
+/* A lista de dívidas não é do mês escolhido: quem deve, deve hoje,
+   venha a dívida de quando vier. */
+function desenharFiado() {
+  var lista = devedores();
+  var caixa = document.getElementById("caixaFiado");
+  if (!lista.length) {
+    caixa.innerHTML = "<div class=\"vazio\"><b>Ninguém devendo</b>Tudo que foi atendido já está pago.</div>";
+    return;
+  }
+  caixa.innerHTML = lista.map(function (d) {
+    var c = d.clienteId ? acharCliente(d.clienteId) : null;
+    var tel = c ? soDigitos(c.tel) : "";
+    var atrasado = d.vencido > 0;
+    return "<div class=\"item\"><span class=\"av\">" + esc(iniciais(d.nome)) + "</span>" +
+      "<span class=\"txt\"><b>" + esc(d.nome) + " " +
+        (atrasado ? "<span class=\"selo aviso\">atrasado</span>" : "") + "</b>" +
+      "<small>" + dinheiro(d.total) + " em aberto" +
+        (d.proxima ? " · " + (atrasado ? "venceu" : "vence") + " em " + diaCurto(d.proxima) : "") +
+      "</small></span>" +
+      (tel ? "<span class=\"acoes\"><a class=\"btn btn-leve btn-mini\" target=\"_blank\" rel=\"noopener\" href=\"https://wa.me/55" +
+             esc(tel) + "?text=" + encodeURIComponent(cobranca(d)) + "\">cobrar</a></span>" : "") +
+      "</div>";
+  }).join("");
+}
+
+function cobranca(d) {
+  return "Oi, " + String(d.nome).split(" ")[0] + "! Tudo bem? Passando para lembrar do " +
+    "valor de " + dinheiro(d.total) + " aqui do " + dados.config.nome +
+    (d.proxima ? ", combinado para " + diaCurto(d.proxima) : "") + ". Obrigada!";
+}
+
+function convite(c) {
+  return "Oi, " + String(c.nome).split(" ")[0] + "! Sentimos sua falta aqui no " + dados.config.nome +
+    ". Quer marcar um horário nesta semana?";
+}
+
+function quadro(rotulo, valor, classe) {
+  return "<div class=\"numero " + classe + "\"><small>" + esc(rotulo) + "</small><b>" + esc(valor) + "</b></div>";
+}
+
+function barras(mapa, tipo, vazio) {
+  var chaves = Object.keys(mapa).sort(function (a, b) { return mapa[b] - mapa[a]; });
+  if (!chaves.length) return "<div class=\"vazio\">" + esc(vazio) + "</div>";
+  var topo = mapa[chaves[0]] || 1;
+  return "<div class=\"barra-lista\">" + chaves.slice(0, 8).map(function (k) {
+    var v = mapa[k];
+    var texto = tipo === "dinheiro" ? dinheiro(v) : v + " " + (v === 1 ? tipo : tipo + "es");
+    return "<div class=\"barra-item\"><small><span>" + esc(k) + "</span><b>" + esc(texto) + "</b></small>" +
+      "<div class=\"barra\"><i style=\"width:" + Math.max(4, (v / topo) * 100) + "%\"></i></div></div>";
+  }).join("") + "</div>";
+}
+
+document.getElementById("caixaAnterior").addEventListener("click", function () {
+  mesCaixa = new Date(mesCaixa.getFullYear(), mesCaixa.getMonth() - 1, 1);
+  desenharCaixa();
+});
+document.getElementById("caixaProximo").addEventListener("click", function () {
+  mesCaixa = new Date(mesCaixa.getFullYear(), mesCaixa.getMonth() + 1, 1);
+  desenharCaixa();
+});
+
+/* ============================================================
+   LOJA
+   Lucro é preço menos custo — por isso o custo é campo obrigatório
+   na hora de cadastrar o item. Cada venda guarda uma foto dos preços
+   do momento: mudar o preço do produto depois não pode reescrever o
+   lucro de uma venda que já aconteceu.
+   ============================================================ */
+
+function acharCategoria(id) {
+  for (var i = 0; i < loja.categorias.length; i++) if (loja.categorias[i].id === id) return loja.categorias[i];
+  return null;
+}
+function acharProduto(id) {
+  for (var i = 0; i < loja.produtos.length; i++) if (loja.produtos[i].id === id) return loja.produtos[i];
+  return null;
+}
+
+function lucroDaVenda(v) {
+  return (Number(v.total) || 0) - (Number(v.custo) || 0);
+}
+
+function desenharLoja() {
+  document.getElementById("lojaTitulo").textContent = mesAno(mesLoja);
+
+  var ini = iso(new Date(mesLoja.getFullYear(), mesLoja.getMonth(), 1));
+  var fim = iso(new Date(mesLoja.getFullYear(), mesLoja.getMonth() + 1, 0));
+  var doMes = loja.vendas.filter(function (v) { return v.data >= ini && v.data <= fim; })
+    .sort(function (a, b) { return a.data < b.data ? 1 : -1; });
+
+  var vendido = doMes.reduce(function (t, v) { return t + (Number(v.total) || 0); }, 0);
+  var lucro = doMes.reduce(function (t, v) { return t + lucroDaVenda(v); }, 0);
+  var recebido = doMes.filter(function (v) { return v.pago; })
+    .reduce(function (t, v) { return t + (Number(v.total) || 0); }, 0);
+
+  // dívida não fica presa ao mês: quem deve, deve hoje
+  var pendente = loja.vendas.filter(function (v) { return !v.pago; })
+    .reduce(function (t, v) { return t + (Number(v.total) || 0); }, 0);
+
+  var emEstoque = loja.produtos.reduce(function (t, p) {
+    return t + (Number(p.estoque) || 0) * (Number(p.custo) || 0);
+  }, 0);
+  var lucroPrevisto = loja.produtos.reduce(function (t, p) {
+    return t + (Number(p.estoque) || 0) * ((Number(p.preco) || 0) - (Number(p.custo) || 0));
+  }, 0);
+
+  document.getElementById("lojaNumeros").innerHTML =
+    quadro("Vendido no mês", dinheiro(vendido), "") +
+    quadro("Lucro no mês", dinheiro(lucro), "dinheiro") +
+    quadro("Já recebido", dinheiro(recebido), "") +
+    quadro("Pendente", dinheiro(pendente), pendente ? "atrasado" : "") +
+    quadro("Parado em estoque", dinheiro(emEstoque), "") +
+    quadro("Lucro a ganhar", dinheiro(lucroPrevisto), "");
+
+  desenharVendas(doMes);
+  desenharProdutos();
+}
+
+function desenharVendas(doMes) {
+  var caixa = document.getElementById("lojaVendas");
+  document.getElementById("lojaVendasResumo").textContent =
+    doMes.length ? doMes.length + " venda(s) no mês" : "nenhuma venda neste mês";
+
+  if (!doMes.length) {
+    caixa.innerHTML = "<div class=\"vazio\"><b>Nenhuma venda ainda</b>" +
+      "Toque em <b>+ Vender</b> para registrar a primeira.</div>";
+    return;
+  }
+  caixa.innerHTML = doMes.map(function (v) {
+    var itens = (v.itens || []).map(function (i) { return i.qtd + "x " + i.nome; }).join(", ");
+    return "<div class=\"item\">" +
+      "<span class=\"txt\"><b>" + esc(v.nome || "Venda") + " " +
+        (v.pago ? "<span class=\"selo ok\">pago</span>" : "<span class=\"selo aviso\">pendente</span>") +
+      "</b><small>" + diaCurto(v.data) + " · " + esc(itens) + " · lucro " + dinheiro(lucroDaVenda(v)) + "</small></span>" +
+      "<span class=\"acoes\">" +
+        "<button class=\"btn btn-leve btn-mini\" data-venda-pago=\"" + esc(v.id) + "\">" +
+          (v.pago ? "estornar" : "recebi") + "</button>" +
+        "<button class=\"btn btn-leve btn-mini\" data-venda-abrir=\"" + esc(v.id) + "\">abrir</button>" +
+      "</span>" +
+      "<span class=\"valor\" style=\"font-family:var(--mono);font-size:13.5px\">" + dinheiro(v.total) + "</span>" +
+      "</div>";
+  }).join("");
+}
+
+function desenharProdutos() {
+  var fichas = "<button type=\"button\" class=\"ficha\" data-cat-filtro=\"\" aria-pressed=\"" + (!filtroCategoria) + "\">Tudo</button>" +
+    loja.categorias.slice().sort(function (a, b) { return (a.ordem || 99) - (b.ordem || 99); }).map(function (c) {
+      return "<button type=\"button\" class=\"ficha\" data-cat-filtro=\"" + esc(c.id) + "\" aria-pressed=\"" +
+        (filtroCategoria === c.id) + "\">" + esc(c.nome) + "</button>";
+    }).join("");
+  document.getElementById("lojaFiltro").innerHTML = fichas;
+
+  var itens = loja.produtos.filter(function (p) { return !filtroCategoria || p.categoriaId === filtroCategoria; });
+  var unidades = loja.produtos.reduce(function (t, p) { return t + (Number(p.estoque) || 0); }, 0);
+  document.getElementById("lojaEstoqueResumo").textContent =
+    loja.produtos.length ? loja.produtos.length + " item(ns) · " + unidades + " unidade(s)" : "nenhum item cadastrado";
+
+  var caixa = document.getElementById("lojaProdutos");
+  if (!loja.produtos.length) {
+    caixa.innerHTML = "<div class=\"vazio\"><b>Nenhum item ainda</b>" +
+      "Cadastre o que você vende — shampoo, fivela, batom, o que for — com o preço que pagou e o preço de venda.</div>";
+    return;
+  }
+  if (!itens.length) {
+    caixa.innerHTML = "<div class=\"vazio\">Nenhum item nesta classificação.</div>";
+    return;
+  }
+
+  // agrupa por classificação, na ordem que a dona definiu
+  var grupos = {};
+  itens.forEach(function (p) {
+    var k = p.categoriaId || "";
+    (grupos[k] = grupos[k] || []).push(p);
+  });
+
+  var ordem = loja.categorias.slice().sort(function (a, b) { return (a.ordem || 99) - (b.ordem || 99); });
+  var chaves = ordem.map(function (c) { return c.id; }).filter(function (k) { return grupos[k]; });
+  if (grupos[""]) chaves.push("");
+
+  caixa.innerHTML = chaves.map(function (k) {
+    var cat = acharCategoria(k);
+    var linhas = grupos[k].slice().sort(porNome).map(function (p) {
+      var lucroUn = (Number(p.preco) || 0) - (Number(p.custo) || 0);
+      var acabou = !(Number(p.estoque) > 0);
+      return "<div class=\"item\">" +
+        "<span class=\"txt\"><b>" + esc(p.nome) + " " +
+          (acabou ? "<span class=\"selo aviso\">acabou</span>" : "") + "</b>" +
+        "<small>" + dinheiro(p.preco) + " · lucro " + dinheiro(lucroUn) +
+          " · " + (Number(p.estoque) || 0) + " em estoque</small></span>" +
+        "<span class=\"acoes\">" +
+          (acabou ? "" : "<button class=\"btn btn-leve btn-mini\" data-vender=\"" + esc(p.id) + "\">vender</button>") +
+          "<button class=\"btn btn-leve btn-mini\" data-prod-edit=\"" + esc(p.id) + "\">editar</button>" +
+        "</span></div>";
+    }).join("");
+    return "<h3 style=\"margin:14px 0 2px\">" + esc(cat ? cat.nome : "Sem classificação") + "</h3>" + linhas;
+  }).join("");
+}
+
+document.getElementById("lojaFiltro").addEventListener("click", function (e) {
+  var b = e.target.closest("[data-cat-filtro]");
+  if (!b) return;
+  filtroCategoria = b.getAttribute("data-cat-filtro");
+  desenharProdutos();
+});
+
+document.getElementById("lojaProdutos").addEventListener("click", function (e) {
+  var v = e.target.closest("[data-vender]");
+  if (v) { formVenda(null, v.getAttribute("data-vender")); return; }
+  var b = e.target.closest("[data-prod-edit]");
+  if (b) formProduto(b.getAttribute("data-prod-edit"));
+});
+
+document.getElementById("lojaVendas").addEventListener("click", function (e) {
+  var p = e.target.closest("[data-venda-pago]");
+  if (p) {
+    var venda = loja.vendas.filter(function (x) { return x.id === p.getAttribute("data-venda-pago"); })[0];
+    if (!venda) return;
+    venda.pago = !venda.pago;
+    venda.pagoEm = venda.pago ? hojeIso() : null;
+    salvarLoja(); desenharLoja();
+    recado(venda.pago ? "Recebido: " + dinheiro(venda.total) + "." : "Venda voltou para pendente.");
+    return;
+  }
+  var a = e.target.closest("[data-venda-abrir]");
+  if (a) verVenda(a.getAttribute("data-venda-abrir"));
+});
+
+document.getElementById("btnNovoProduto").addEventListener("click", function () { formProduto(null); });
+document.getElementById("btnNovaCategoria").addEventListener("click", function () { formCategoria(null); });
+document.getElementById("lojaAnterior").addEventListener("click", function () {
+  mesLoja = new Date(mesLoja.getFullYear(), mesLoja.getMonth() - 1, 1);
+  desenharLoja();
+});
+document.getElementById("lojaProximo").addEventListener("click", function () {
+  mesLoja = new Date(mesLoja.getFullYear(), mesLoja.getMonth() + 1, 1);
+  desenharLoja();
+});
+
+/* ---------- cadastro de classificação ---------- */
+
+function formCategoria(id) {
+  var c = id ? acharCategoria(id) : null;
+  var novo = !c;
+  if (novo) c = { id: uid(), nome: "", ordem: loja.categorias.length + 1 };
+
+  abrirJanela({
+    titulo: novo ? "Nova classificação" : "Editar classificação",
+    detalhe: "É como os itens ficam separados na lista.",
+    corpo: "<div class=\"campo\"><label for=\"gNome\">Nome</label>" +
+      "<input id=\"gNome\" value=\"" + esc(c.nome) + "\" placeholder=\"Ex.: Maquiagem\" /></div>" +
+      "<p class=\"aviso-campo\" id=\"gAviso\"></p>" +
+      (novo ? "" : "<button class=\"btn btn-perigo\" style=\"width:100%;margin-top:6px\" data-acao=\"apagar\">Apagar classificação</button>"),
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: "Salvar", classe: "btn-forte", acao: function () {
+        var nome = document.getElementById("gNome").value.trim();
+        if (!nome) { document.getElementById("gAviso").textContent = "Diga o nome."; return false; }
+        c.nome = nome;
+        if (novo) loja.categorias.push(c);
+        salvarLoja(); desenharLoja(); recado("Classificação salva.");
+      } }
+    ],
+    pronto: function () {
+      var b = document.querySelector("#janelaCorpo [data-acao=apagar]");
+      if (!b) return;
+      b.addEventListener("click", function () {
+        fecharJanela();
+        var quantos = loja.produtos.filter(function (p) { return p.categoriaId === c.id; }).length;
+        perguntar("Apagar " + c.nome + "?",
+          quantos ? "Os " + quantos + " item(ns) dela ficam sem classificação, mas não somem." : "Não dá para desfazer.",
+          "Apagar", true, function () {
+            loja.categorias = loja.categorias.filter(function (x) { return x.id !== c.id; });
+            jogarNoLixo("lojaCategorias", c.id);
+            loja.produtos.forEach(function (p) { if (p.categoriaId === c.id) p.categoriaId = ""; });
+            if (filtroCategoria === c.id) filtroCategoria = "";
+            salvarLoja(); desenharLoja(); recado("Classificação apagada.");
+          });
+      });
+    }
+  });
+}
+
+/* ---------- cadastro de item ---------- */
+
+function formProduto(id) {
+  var p = id ? acharProduto(id) : null;
+  var novo = !p;
+  if (novo) p = { id: uid(), categoriaId: filtroCategoria || (loja.categorias[0] || {}).id || "", nome: "", custo: 0, preco: 0, estoque: 0, obs: "" };
+
+  var opcoes = "<option value=\"\">— sem classificação —</option>" +
+    loja.categorias.map(function (c) {
+      return "<option value=\"" + esc(c.id) + "\"" + (c.id === p.categoriaId ? " selected" : "") + ">" + esc(c.nome) + "</option>";
+    }).join("");
+
+  abrirJanela({
+    titulo: novo ? "Novo item" : "Editar item",
+    detalhe: "O preço que você pagou é o que permite calcular o lucro.",
+    corpo:
+      "<div class=\"grade\">" +
+        "<div class=\"campo largo\"><label for=\"pdNome\">Nome</label>" +
+          "<input id=\"pdNome\" value=\"" + esc(p.nome) + "\" placeholder=\"Ex.: Shampoo hidratante 300ml\" /></div>" +
+        "<div class=\"campo largo\"><label for=\"pdCat\">Classificação</label>" +
+          "<select id=\"pdCat\">" + opcoes + "</select></div>" +
+        "<div class=\"campo\"><label for=\"pdCusto\">Você pagou (R$)</label>" +
+          "<input type=\"number\" id=\"pdCusto\" min=\"0\" step=\"0.01\" value=\"" + (Number(p.custo) || 0) + "\" /></div>" +
+        "<div class=\"campo\"><label for=\"pdPreco\">Vende por (R$)</label>" +
+          "<input type=\"number\" id=\"pdPreco\" min=\"0\" step=\"0.01\" value=\"" + (Number(p.preco) || 0) + "\" /></div>" +
+        "<div class=\"campo\"><label for=\"pdEstoque\">Quantidade</label>" +
+          "<input type=\"number\" id=\"pdEstoque\" min=\"0\" step=\"1\" value=\"" + (Number(p.estoque) || 0) + "\" /></div>" +
+        "<div class=\"campo\"><label>Lucro por unidade</label>" +
+          "<input id=\"pdLucro\" readonly style=\"background:var(--superficie-2)\" /></div>" +
+        "<div class=\"campo largo\"><label for=\"pdObs\">Observação</label>" +
+          "<input id=\"pdObs\" value=\"" + esc(p.obs || "") + "\" placeholder=\"Marca, cor, tamanho…\" /></div>" +
+      "</div><p class=\"aviso-campo\" id=\"pdAviso\"></p>" +
+      (novo ? "" : "<button class=\"btn btn-perigo\" style=\"width:100%;margin-top:6px\" data-acao=\"apagar\">Apagar item</button>"),
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: "Salvar", classe: "btn-forte", acao: function () {
+        var nome = document.getElementById("pdNome").value.trim();
+        if (!nome) { document.getElementById("pdAviso").textContent = "Diga o nome do item."; return false; }
+        p.nome = nome;
+        p.categoriaId = document.getElementById("pdCat").value;
+        p.custo = Number(document.getElementById("pdCusto").value) || 0;
+        p.preco = Number(document.getElementById("pdPreco").value) || 0;
+        p.estoque = Number(document.getElementById("pdEstoque").value) || 0;
+        p.obs = document.getElementById("pdObs").value.trim();
+        if (novo) loja.produtos.push(p);
+        salvarLoja(); desenharLoja(); recado("Item salvo.");
+      } }
+    ],
+    pronto: function () {
+      function contaLucro() {
+        var l = (Number(document.getElementById("pdPreco").value) || 0) -
+                (Number(document.getElementById("pdCusto").value) || 0);
+        var el = document.getElementById("pdLucro");
+        el.value = dinheiro(l);
+        el.style.color = l < 0 ? "var(--erro)" : l > 0 ? "var(--ok)" : "";
+      }
+      document.getElementById("pdPreco").addEventListener("input", contaLucro);
+      document.getElementById("pdCusto").addEventListener("input", contaLucro);
+      contaLucro();
+
+      var b = document.querySelector("#janelaCorpo [data-acao=apagar]");
+      if (!b) return;
+      b.addEventListener("click", function () {
+        fecharJanela();
+        perguntar("Apagar " + p.nome + "?",
+          "As vendas já feitas continuam com o registro do item. Não dá para desfazer.",
+          "Apagar", true, function () {
+            loja.produtos = loja.produtos.filter(function (x) { return x.id !== p.id; });
+            jogarNoLixo("lojaProdutos", p.id);
+            salvarLoja(); desenharLoja(); recado("Item apagado.");
+          });
+      });
+    }
+  });
+}
+
+/* ---------- vender ---------- */
+
+function formVenda(id, produtoId) {
+  var p = produtoId ? acharProduto(produtoId) : null;
+  var disponiveis = loja.produtos.filter(function (x) { return Number(x.estoque) > 0; });
+  if (!disponiveis.length && !p) {
+    recado("Cadastre um item com quantidade antes de vender.");
+    return;
+  }
+  if (!p) p = disponiveis[0];
+
+  var opcoes = disponiveis.map(function (x) {
+    return "<option value=\"" + esc(x.id) + "\"" + (x.id === p.id ? " selected" : "") + ">" +
+      esc(x.nome) + " (" + (Number(x.estoque) || 0) + ")</option>";
+  }).join("");
+
+  var opcoesCli = "<option value=\"\">— não identificar —</option>" +
+    dados.clientes.slice().sort(porNome).map(function (c) {
+      return "<option value=\"" + esc(c.id) + "\">" + esc(c.nome) + "</option>";
+    }).join("");
+
+  abrirJanela({
+    titulo: "Vender",
+    detalhe: "A quantidade sai do estoque na hora.",
+    corpo:
+      "<div class=\"grade\">" +
+        "<div class=\"campo largo\"><label for=\"vProd\">Item</label><select id=\"vProd\">" + opcoes + "</select></div>" +
+        "<div class=\"campo\"><label for=\"vQtd\">Quantidade</label>" +
+          "<input type=\"number\" id=\"vQtd\" min=\"1\" step=\"1\" value=\"1\" /></div>" +
+        "<div class=\"campo\"><label for=\"vPreco\">Preço unitário (R$)</label>" +
+          "<input type=\"number\" id=\"vPreco\" min=\"0\" step=\"0.01\" value=\"" + (Number(p.preco) || 0) + "\" /></div>" +
+        "<div class=\"campo\"><label for=\"vData\">Dia</label>" +
+          "<input type=\"date\" id=\"vData\" value=\"" + hojeIso() + "\" /></div>" +
+        "<div class=\"campo\"><label for=\"vPago\">Pagamento</label>" +
+          "<select id=\"vPago\"><option value=\"1\">Já pagou</option><option value=\"0\">Ficou devendo</option></select></div>" +
+        "<div class=\"campo largo\"><label for=\"vCli\">Quem comprou</label><select id=\"vCli\">" + opcoesCli + "</select></div>" +
+        "<div class=\"campo largo\" id=\"caixaVNome\"><label for=\"vNome\">Nome (se não estiver na lista)</label>" +
+          "<input id=\"vNome\" placeholder=\"Deixe vazio para não identificar\" /></div>" +
+      "</div>" +
+      "<p id=\"vResumo\" style=\"font-size:13px;color:var(--tinta-2);margin:2px 0 0\"></p>" +
+      "<p class=\"aviso-campo\" id=\"vAviso\"></p>",
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: "Registrar venda", classe: "btn-forte", acao: guardarVenda }
+    ],
+    pronto: function () {
+      ["vProd", "vQtd", "vPreco"].forEach(function (cid) {
+        document.getElementById(cid).addEventListener("input", resumoVenda);
+        document.getElementById(cid).addEventListener("change", resumoVenda);
+      });
+      document.getElementById("vProd").addEventListener("change", function () {
+        var novo = acharProduto(this.value);
+        if (novo) document.getElementById("vPreco").value = Number(novo.preco) || 0;
+        resumoVenda();
+      });
+      resumoVenda();
+    }
+  });
+
+  function resumoVenda() {
+    var prod = acharProduto(document.getElementById("vProd").value);
+    if (!prod) return;
+    var qtd = Number(document.getElementById("vQtd").value) || 0;
+    var preco = Number(document.getElementById("vPreco").value) || 0;
+    var total = qtd * preco;
+    var lucro = total - qtd * (Number(prod.custo) || 0);
+    document.getElementById("vResumo").innerHTML =
+      "Total <b>" + dinheiro(total) + "</b> · lucro <b style=\"color:" +
+      (lucro < 0 ? "var(--erro)" : "var(--ok)") + "\">" + dinheiro(lucro) + "</b>" +
+      " · sobram " + Math.max(0, (Number(prod.estoque) || 0) - qtd) + " no estoque";
+  }
+
+  function guardarVenda() {
+    var prod = acharProduto(document.getElementById("vProd").value);
+    var aviso = document.getElementById("vAviso");
+    if (!prod) { aviso.textContent = "Escolha o item."; return false; }
+    var qtd = Number(document.getElementById("vQtd").value) || 0;
+    if (qtd < 1) { aviso.textContent = "A quantidade precisa ser pelo menos 1."; return false; }
+    if (qtd > (Number(prod.estoque) || 0)) {
+      aviso.textContent = "Só há " + (Number(prod.estoque) || 0) + " em estoque.";
+      return false;
+    }
+    var preco = Number(document.getElementById("vPreco").value) || 0;
+    var cliId = document.getElementById("vCli").value;
+    var cli = cliId ? acharCliente(cliId) : null;
+    var nomeDigitado = document.getElementById("vNome").value.trim();
+    var pago = document.getElementById("vPago").value === "1";
+
+    var venda = {
+      id: uid(),
+      data: document.getElementById("vData").value || hojeIso(),
+      itens: [{ produtoId: prod.id, nome: prod.nome, qtd: qtd, preco: preco, custo: Number(prod.custo) || 0 }],
+      total: qtd * preco,
+      custo: qtd * (Number(prod.custo) || 0),
+      clienteId: cliId || "",
+      nome: cli ? cli.nome : (nomeDigitado || "Venda avulsa"),
+      pago: pago,
+      pagoEm: pago ? hojeIso() : null,
+      obs: ""
+    };
+
+    prod.estoque = (Number(prod.estoque) || 0) - qtd;
+    loja.vendas.push(venda);
+    salvarLoja();
+    mesLoja = primeiroDoMes(deIso(venda.data));
+    desenharLoja();
+    recado(pago ? "Venda registrada: " + dinheiro(venda.total) + "."
+                : "Venda registrada como pendente.");
+    return true;
+  }
+}
+
+function verVenda(id) {
+  var v = loja.vendas.filter(function (x) { return x.id === id; })[0];
+  if (!v) return;
+  var cli = v.clienteId ? acharCliente(v.clienteId) : null;
+  var tel = cli ? soDigitos(cli.tel) : "";
+
+  var itens = (v.itens || []).map(function (i) {
+    return "<div class=\"item\"><span class=\"txt\"><b>" + i.qtd + "x " + esc(i.nome) + "</b>" +
+      "<small>" + dinheiro(i.preco) + " cada · custou " + dinheiro(i.custo) + " cada</small></span>" +
+      "<span class=\"valor\" style=\"font-family:var(--mono)\">" + dinheiro(i.qtd * i.preco) + "</span></div>";
+  }).join("");
+
+  abrirJanela({
+    titulo: dinheiro(v.total) + " · " + diaCurto(v.data),
+    detalhe: (v.nome || "Venda") + (v.pago ? " · pago" : " · pendente"),
+    corpo: itens +
+      "<p style=\"font-size:13.5px;margin-top:12px\">Lucro desta venda: <b style=\"color:var(--ok)\">" +
+        dinheiro(lucroDaVenda(v)) + "</b></p>" +
+      "<div class=\"linha-botoes\" style=\"margin-top:14px\">" +
+        (tel && !v.pago ? "<a class=\"btn\" target=\"_blank\" rel=\"noopener\" href=\"https://wa.me/55" + esc(tel) +
+          "?text=" + encodeURIComponent(cobrancaLoja(v)) + "\">Cobrar</a>" : "") +
+        "<button class=\"btn btn-perigo\" data-acao=\"apagar\">Apagar venda</button>" +
+      "</div>",
+    botoes: [{ texto: "Fechar", classe: "" }],
+    pronto: function () {
+      var b = document.querySelector("#janelaCorpo [data-acao=apagar]");
+      if (!b) return;
+      b.addEventListener("click", function () {
+        fecharJanela();
+        perguntar("Apagar esta venda?",
+          "As unidades voltam para o estoque. Não dá para desfazer.",
+          "Apagar", true, function () {
+            (v.itens || []).forEach(function (i) {
+              var prod = acharProduto(i.produtoId);
+              if (prod) prod.estoque = (Number(prod.estoque) || 0) + i.qtd;
+            });
+            loja.vendas = loja.vendas.filter(function (x) { return x.id !== v.id; });
+            jogarNoLixo("lojaVendas", v.id);
+            salvarLoja(); desenharLoja(); recado("Venda apagada.");
+          });
+      });
+    }
+  });
+}
+
+function cobrancaLoja(v) {
+  return "Oi, " + String(v.nome).split(" ")[0] + "! Passando para lembrar do valor de " +
+    dinheiro(v.total) + " da compra de " + diaCurto(v.data) + " aqui no " + dados.config.nome + ". Obrigada!";
+}
+
+/* ============================================================
+   AJUSTES E CÓPIA DE SEGURANÇA
+   ============================================================ */
+
+/* ---------- cartão da conta ----------
+   Só aparece quando o servidor está configurado. Sem isso, a dona não
+   precisa saber que existe login nenhum. */
+
+function desenharConta() {
+  var cartao = document.getElementById("cartaoConta");
+  cartao.hidden = !temServidor();
+  if (!temServidor()) return;
+
+  var corpo = document.getElementById("corpoConta");
+  if (!sessao) {
+    corpo.innerHTML =
+      "<p style=\"font-size:13.5px;color:var(--tinta-2);margin-bottom:13px\">" +
+      "Com uma conta, a agenda fica guardada também fora do celular: se o aparelho " +
+      "sumir ou for trocado, é só entrar de novo e tudo volta.</p>" +
+      "<div class=\"linha-botoes\">" +
+        "<button class=\"btn btn-forte\" id=\"btnEntrar\">Entrar</button>" +
+        "<button class=\"btn\" id=\"btnCriarConta\">Criar conta</button>" +
+      "</div>";
+    marcarSync("");
+  } else {
+    var pend = lixoDe();
+    var faltaMandar = estaSujo() ||
+      pend.horarios.length || pend.clientes.length || pend.servicos.length || pend.profissionais.length;
+    corpo.innerHTML =
+      "<div class=\"item\"><span class=\"av\">" + esc(iniciais(sessao.usuario || "?")) + "</span>" +
+      "<span class=\"txt\"><b>" + esc(sessao.usuario || "conta") + "</b><small>" +
+      (faltaMandar ? "tem coisa esperando para subir" : "tudo já está no servidor") +
+      "</small></span></div>" +
+      "<div class=\"linha-botoes\" style=\"margin-top:12px\">" +
+        "<button class=\"btn\" id=\"btnSincronizar\">Sincronizar agora</button>" +
+        "<button class=\"btn\" id=\"btnSair\">Sair</button>" +
+      "</div>";
+  }
+}
+
+document.getElementById("corpoConta").addEventListener("click", function (e) {
+  var b = e.target.closest("button");
+  if (!b) return;
+  if (b.id === "btnEntrar") formConta(false);
+  else if (b.id === "btnCriarConta") formConta(true);
+  else if (b.id === "btnSincronizar") { marcarSync("enviando…"); sincronizar(desenharConta); }
+  else if (b.id === "btnSair") {
+    perguntar("Sair da conta?",
+      "A agenda continua neste aparelho. Para ver em outro celular, é só entrar de novo.",
+      "Sair", false, function () { esquecerSessao(); desenharConta(); recado("Você saiu da conta."); });
+  }
+});
+
+function formConta(criando) {
+  abrirJanela({
+    titulo: criando ? "Criar conta do salão" : "Entrar",
+    detalhe: criando ? "Escolha um usuário e uma senha. É o que vai valer em qualquer celular."
+                     : "Use o usuário e a senha que você criou.",
+    corpo:
+      "<div class=\"grade\">" +
+        "<div class=\"campo largo\"><label for=\"kUsuario\">Usuário</label>" +
+          "<input id=\"kUsuario\" autocapitalize=\"none\" autocomplete=\"username\" placeholder=\"sem espaço e sem acento\" /></div>" +
+        "<div class=\"campo largo\"><label for=\"kSenha\">Senha</label>" +
+          "<input type=\"password\" id=\"kSenha\" autocomplete=\"current-password\" /></div>" +
+      "</div><p class=\"aviso-campo\" id=\"kAviso\"></p>",
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: criando ? "Criar" : "Entrar", classe: "btn-forte", acao: function () {
+        var u = document.getElementById("kUsuario").value.trim();
+        var s = document.getElementById("kSenha").value;
+        var aviso = document.getElementById("kAviso");
+        if (!u) { aviso.textContent = "Diga o usuário."; return false; }
+        if (s.length < 6) { aviso.textContent = "A senha precisa de pelo menos 6 letras ou números."; return false; }
+        aviso.textContent = "falando com o servidor…";
+
+        var promessa = criando ? criarContaNoServidor(u, s) : entrarNoServidor(u, s);
+        promessa.then(function (r) {
+          if (!r.ok) {
+            aviso.textContent = r.offline ? "Sem internet agora."
+              : criando ? "Não deu para criar: " + r.erro
+              : "Usuário ou senha errados — ou a conta ainda não existe.";
+            return;
+          }
+          fecharJanela();
+          marcarSujo(true);            // a primeira subida leva tudo que já existe aqui
+          desenharConta();
+          recado(criando ? "Conta criada. Sua agenda agora tem cópia no servidor." : "Tudo certo, entrando…");
+          sincronizar(desenharConta);
+        });
+        return false;                  // a janela fecha sozinha quando o servidor responde
+      } }
+    ]
+  });
+}
+
+function desenharAjustes() {
+  desenharConta();
+  document.getElementById("abre").value = dados.config.abre;
+  document.getElementById("fecha").value = dados.config.fecha;
+  document.getElementById("intervalo").value = String(dados.config.intervalo);
+
+  var caixa = document.getElementById("diasSemana");
+  caixa.innerHTML = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"].map(function (n, i) {
+    var on = dados.config.dias.indexOf(i) >= 0;
+    return "<button type=\"button\" class=\"ficha\" data-dia-semana=\"" + i + "\" aria-pressed=\"" + on + "\">" + n + "</button>";
+  }).join("");
+
+  var onde = document.getElementById("ondeGuardado");
+  if (onde) {
+    onde.textContent =
+      (sessao
+        ? "Na sua conta, no servidor, e também aqui no celular — por isso a agenda abre e funciona sem internet. Trocar de aparelho é só entrar de novo."
+        : "Só dentro deste celular, enquanto você não criar a conta. ") +
+      (dados.armazenamentoPermanente
+        ? " O sistema marcou este espaço como permanente: não apaga sozinho para liberar memória."
+        : " O sistema ainda não marcou este espaço como permanente; instalar na tela inicial costuma resolver.");
+  }
+}
+
+document.getElementById("diasSemana").addEventListener("click", function (e) {
+  var b = e.target.closest("[data-dia-semana]");
+  if (!b) return;
+  var i = Number(b.getAttribute("data-dia-semana"));
+  var pos = dados.config.dias.indexOf(i);
+  if (pos >= 0) dados.config.dias.splice(pos, 1); else dados.config.dias.push(i);
+  dados.config.dias.sort();
+  salvar(); desenhar();
+});
+
+["abre", "fecha", "intervalo"].forEach(function (campo) {
+  document.getElementById(campo).addEventListener("change", function () {
+    var v = this.value;
+    if (campo === "intervalo") dados.config.intervalo = Number(v) || 30;
+    else dados.config[campo] = v;
+    salvar(); desenhar();
+  });
+});
+
+document.getElementById("nomeSalao").addEventListener("change", function () {
+  dados.config.nome = this.value.trim() || "Meu Salão";
+  this.value = dados.config.nome;
+  salvar();
+});
+
+document.getElementById("btnApagarTudo").addEventListener("click", function () {
+  perguntar("Apagar tudo mesmo?",
+    "Todos os agendamentos, clientes e serviços deste aparelho serão removidos. O que já subiu para a sua conta continua no servidor.",
+    "Apagar tudo", true, function () {
+      dados = padrao();
+      salvar();
+      partida();
+      recado("Tudo apagado.");
+    });
+});
+
+/* ============================================================
+   BOTÃO GRANDE E PARTIDA
+   ============================================================ */
+
+document.getElementById("fabNovo").addEventListener("click", function () {
+  if (telaAtual === "clientes") formCliente(null);
+  else if (telaAtual === "servicos") formServico(null);
+  else if (telaAtual === "loja") formVenda(null, null);
+  else formAgendamento(null, null);
+});
+
+function desenhar() {
+  if (telaAtual === "agenda") { desenharMes(); desenharDia(); }
+  else if (telaAtual === "clientes") desenharClientes();
+  else if (telaAtual === "servicos") desenharServicos();
+  else if (telaAtual === "caixa") desenharCaixa();
+  else if (telaAtual === "loja") desenharLoja();
+  else if (telaAtual === "ajustes") desenharAjustes();
+}
+
+function partida() {
+  document.getElementById("nomeSalao").value = dados.config.nome;
+  desenharAjustes();
+  mostrarTela(telaAtual);
+}
+
+/* Cobra a conta de quem ainda não criou: sem ela a agenda vive só
+   dentro deste aparelho, e perder o celular é perder tudo. */
+function lembrarDaConta() {
+  if (!temServidor() || sessao) return;
+  if (dados.agenda.length < 3) return;         // deixa experimentar antes de cobrar
+  setTimeout(function () {
+    perguntar("Criar a conta do salão?",
+      "A agenda está só dentro deste celular. Com uma conta, ela fica guardada também " +
+      "fora dele: se o aparelho sumir ou for trocado, é só entrar de novo que tudo volta.",
+      "Criar agora", false, function () { mostrarTela("ajustes"); formConta(true); });
+  }, 1400);
+}
+
+partida();
+
+pedirArmazenamentoPermanente().then(function (permanente) {
+  dados.armazenamentoPermanente = !!permanente;
+  return recuperarLojaSePreciso();
+}).then(function (voltouLoja) {
+  if (!voltouLoja) gravarNoBancoLoja(loja);
+  return recuperarSePreciso();
+}).then(function (recuperou) {
+  if (!recuperou) gravarNoBanco(dados);   // primeira gravação na gaveta grande
+  desenharAjustes();
+  if (temServidor() && sessao) sincronizar(desenharConta);
+  else lembrarDaConta();
+});
+
+// voltou o sinal: manda o que ficou esperando
+window.addEventListener("online", function () { agendarSync(500); });
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
