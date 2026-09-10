@@ -174,7 +174,7 @@ button { cursor: pointer; }
    tres; da tela media para cima voltam a caber todas numa linha so. */
 .abas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; padding-bottom: 9px; }
 @media (min-width: 560px) { .abas { grid-template-columns: repeat(6, 1fr); } }
-.aba-ico, .aba-sub { display: none; }   /* só no menu lateral do computador */
+.aba-ico, .aba-sub, .menu-pe { display: none; }   /* só no menu lateral do computador */
 
 /* o tema fica a um toque no topo; o cartão dos Ajustes continua valendo,
    e os dois andam sempre juntos */
@@ -215,6 +215,11 @@ button { cursor: pointer; }
   .abas .aba[aria-current="page"]::after {
     content: ""; margin-left: auto; width: 6px; height: 6px;
     border-radius: 50%; background: #fff;
+  }
+  .abas .menu-pe {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    margin-top: auto; padding: 12px 6px 2px; border-top: 1px solid var(--linha);
+    font-size: 11.5px; font-weight: 600; color: var(--fraco);
   }
   /* a folga vem no body: o .folha se centraliza sozinho com margin auto,
      e uma margem ali seria desfeita pela regra de fora da media */
@@ -503,6 +508,11 @@ button { cursor: pointer; }
       <svg class="aba-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>
       <span class="aba-txt"><span class="aba-nome">Ajustes</span><span class="aba-sub">Salão e conta</span></span>
     </button>
+    <!-- no pé do menu, para a dona saber em que versão está sem ir aos Ajustes -->
+    <div class="menu-pe">
+      <span id="menuVersao">versão —</span>
+      <button class="btn btn-leve btn-mini" id="btnAtualizarMenu">atualizar</button>
+    </div>
   </nav>
 </header>
 
@@ -791,7 +801,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.11";
+var VERSAO_APP = "1.12";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -3368,6 +3378,8 @@ function desenharAjustes() {
 
   var vs = document.getElementById("versaoAtual");
   if (vs) vs.textContent = "versão " + VERSAO_APP;
+  var vm = document.getElementById("menuVersao");
+  if (vm) vm.textContent = "versão " + VERSAO_APP;
 
   var txtApagar = document.getElementById("textoApagar");
   if (txtApagar) {
@@ -3420,6 +3432,7 @@ document.getElementById("nomeSalao").addEventListener("change", function () {
    destrava — a mesma de entrar. Sem conta não existe senha para
    conferir, então resta a pergunta de sempre. */
 document.getElementById("btnAtualizar").addEventListener("click", procurarAtualizacao);
+document.getElementById("btnAtualizarMenu").addEventListener("click", procurarAtualizacao);
 
 document.getElementById("btnApagarTudo").addEventListener("click", function () {
   if (temServidor() && sessao) { pedirSenhaParaApagar(); return; }
@@ -3482,11 +3495,19 @@ function pedirSenhaParaApagar() {
    fora o cache guardado e recarrega — é o caminho mais curto entre
    "saiu uma correção" e "o celular está com ela". */
 
+/* O mesmo botão existe em dois lugares — no pé do menu do computador e no
+   cartão Versão dos Ajustes. Quem clica de um lado precisa ver a resposta,
+   então o recado sai nos dois e também na tarja de aviso. */
 function procurarAtualizacao() {
-  var recadoEl = document.getElementById("recadoVersao");
-  var botao = document.getElementById("btnAtualizar");
-  recadoEl.textContent = "procurando…";
-  botao.disabled = true;
+  var botoes = [document.getElementById("btnAtualizar"), document.getElementById("btnAtualizarMenu")]
+    .filter(Boolean);
+  function diz(texto, liberar) {
+    var el = document.getElementById("recadoVersao");
+    if (el) el.textContent = texto;
+    botoes.forEach(function (b) { b.disabled = !liberar; });
+    if (liberar) recado(texto);
+  }
+  diz("procurando…", false);
 
   fetch("index.html?v=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.text(); })
@@ -3495,22 +3516,19 @@ function procurarAtualizacao() {
       var laFora = achou ? achou[1] : null;
 
       if (!laFora) {
-        recadoEl.textContent = "Não deu para ler a versão do servidor. Tente de novo mais tarde.";
-        botao.disabled = false;
+        diz("Não deu para ler a versão do servidor. Tente de novo mais tarde.", true);
         return;
       }
       if (laFora === VERSAO_APP) {
-        recadoEl.textContent = "Você já está na versão mais nova (" + VERSAO_APP + ").";
-        botao.disabled = false;
+        diz("Você já está na versão mais nova (" + VERSAO_APP + ").", true);
         return;
       }
 
-      recadoEl.textContent = "Versão " + laFora + " encontrada. Atualizando…";
+      diz("Versão " + laFora + " encontrada. Atualizando…", false);
       limparCacheERecarregar();
     })
     .catch(function () {
-      recadoEl.textContent = "Sem internet para procurar. Tente quando o sinal voltar.";
-      botao.disabled = false;
+      diz("Sem internet para procurar. Tente quando o sinal voltar.", true);
     });
 }
 
