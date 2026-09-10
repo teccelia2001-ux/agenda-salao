@@ -794,7 +794,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.14";
+var VERSAO_APP = "1.15";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -1974,6 +1974,7 @@ function formAgendamento(id, horaSugerida) {
         "<small>Ao salvar, ela entra na lista de clientes.</small></div>" +
       "<div class=\"campo largo\" id=\"caixaTel\"" + (h.clienteId ? " hidden" : "") + ">" +
         "<label for=\"fTel\">WhatsApp (opcional)</label><input id=\"fTel\" inputmode=\"numeric\" placeholder=\"DDD + número\" /></div>" +
+      "<p class=\"largo\" id=\"fDoCliente\" style=\"font-size:12.5px;color:var(--tinta-2);margin:0\" hidden></p>" +
       "<div class=\"campo largo\"><label>Serviços</label><div class=\"fichas\" id=\"fServ\">" + fichasServ + "</div></div>" +
       "<div class=\"campo\"><label for=\"fData\">Dia</label><input type=\"date\" id=\"fData\" value=\"" + esc(h.data) + "\" /></div>" +
       "<div class=\"campo\"><label for=\"fHora\">Hora</label><input type=\"time\" id=\"fHora\" value=\"" + esc(h.hora) + "\" /></div>" +
@@ -2013,7 +2014,48 @@ function formAgendamento(id, horaSugerida) {
         var temCliente = !!sel.value;
         document.getElementById("caixaNome").hidden = temCliente;
         document.getElementById("caixaTel").hidden = temCliente;
+        puxarDaCliente(sel.value);
       });
+
+      /* Cliente escolhida: o agendamento já nasce com o que ela costuma
+         fazer — os serviços, a profissional, a duração e o preço do último
+         atendimento —, porque quase sempre é a mesma coisa de novo. Tudo
+         continua editável, e a linha de recado diz de onde veio. */
+      function puxarDaCliente(clienteId) {
+        var recadoEl = document.getElementById("fDoCliente");
+        recadoEl.hidden = true; recadoEl.textContent = "";
+        if (!clienteId) return;
+        var c = acharCliente(clienteId);
+        var hist = historicoDe(clienteId).filter(function (x) { return x.id !== h.id; });
+        var ultimo = hist.filter(function (x) {
+          return x.status !== "cancelado" && (x.servicoIds || []).length;
+        })[0];
+        var partes = [];
+
+        if (ultimo) {
+          document.querySelectorAll("#fServ [data-serv]").forEach(function (b) {
+            b.setAttribute("aria-pressed",
+              (ultimo.servicoIds || []).indexOf(b.getAttribute("data-serv")) >= 0 ? "true" : "false");
+          });
+          recalcular();
+          // duração e preço do próprio atendimento: podem ter sido ajustados à mão
+          if (Number(ultimo.min)) document.getElementById("fMin").value = Number(ultimo.min);
+          if (Number(ultimo.valor)) document.getElementById("fValor").value = Number(ultimo.valor).toFixed(2);
+          var prof = document.getElementById("fProf");
+          if (prof && ultimo.profId) prof.value = ultimo.profId;
+          partes.push("Repetimos o atendimento de " + diaCurto(ultimo.data) + " — é só trocar se for outro.");
+        }
+
+        var obs = document.getElementById("fObs");
+        if (c && c.obs && !obs.value.trim()) obs.value = c.obs;
+
+        var deve = hist.reduce(function (t, x) {
+          return t + (x.status === "cancelado" ? 0 : emAbertoDe(x));
+        }, 0);
+        if (deve) partes.push("Tem " + dinheiro(deve) + " em aberto.");
+
+        if (partes.length) { recadoEl.textContent = partes.join(" "); recadoEl.hidden = false; }
+      }
       document.getElementById("fServ").addEventListener("click", function (e) {
         var b = e.target.closest("[data-serv]");
         if (!b) return;
