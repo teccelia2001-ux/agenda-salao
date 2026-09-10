@@ -728,13 +728,6 @@ button { cursor: pointer; }
     </div>
 
     <div class="cartao">
-      <div class="cartao-topo"><h2>Onde a agenda fica guardada</h2></div>
-      <div class="cartao-corpo">
-        <p style="font-size:13.5px;color:var(--tinta-2)" id="ondeGuardado"></p>
-      </div>
-    </div>
-
-    <div class="cartao">
       <div class="cartao-topo">
         <h2>Versão</h2>
         <span class="dica" id="versaoAtual">—</span>
@@ -801,7 +794,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.12";
+var VERSAO_APP = "1.13";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -3388,17 +3381,6 @@ function desenharAjustes() {
         "sua conta</b>. Pede a sua senha antes, para ninguém apagar por engano. Não dá para desfazer."
       : "Remove todos os agendamentos, clientes, serviços e itens da loja deste aparelho. " +
         "Não dá para desfazer.";
-  }
-
-  var onde = document.getElementById("ondeGuardado");
-  if (onde) {
-    onde.textContent =
-      (sessao
-        ? "Na sua conta, no servidor, e também aqui no celular — por isso a agenda abre e funciona sem internet. Trocar de aparelho é só entrar de novo."
-        : "Só dentro deste celular, enquanto você não criar a conta. ") +
-      (dados.armazenamentoPermanente
-        ? " O sistema marcou este espaço como permanente: não apaga sozinho para liberar memória."
-        : " O sistema ainda não marcou este espaço como permanente; instalar na tela inicial costuma resolver.");
   }
 }
 
