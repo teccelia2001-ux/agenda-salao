@@ -808,7 +808,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.16";
+var VERSAO_APP = "1.17";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -2640,7 +2640,10 @@ function desenharServicos() {
     ? dados.servicos.map(function (s) {
         return "<div class=\"item\"><span class=\"txt\"><b>" + esc(s.nome) + "</b>" +
           "<small>" + duracaoTexto(Number(s.min) || 0) + " · " + dinheiro(s.preco) + "</small></span>" +
-          "<span class=\"acoes\"><button class=\"btn btn-leve btn-mini\" data-serv-edit=\"" + esc(s.id) + "\">editar</button></span></div>";
+          "<span class=\"acoes\">" +
+            "<button class=\"btn btn-leve btn-mini\" data-serv-edit=\"" + esc(s.id) + "\">editar</button>" +
+            "<button class=\"btn btn-leve btn-mini btn-perigo\" data-serv-apagar=\"" + esc(s.id) + "\">apagar</button>" +
+          "</span></div>";
       }).join("")
     : "<div class=\"vazio\"><b>Nenhum serviço</b>Toque em <b>+ Serviço</b>.</div>";
 
@@ -2656,7 +2659,9 @@ function desenharServicos() {
 
 document.getElementById("listaServicos").addEventListener("click", function (e) {
   var b = e.target.closest("[data-serv-edit]");
-  if (b) formServico(b.getAttribute("data-serv-edit"));
+  if (b) { formServico(b.getAttribute("data-serv-edit")); return; }
+  var a = e.target.closest("[data-serv-apagar]");
+  if (a) apagarServico(acharServico(a.getAttribute("data-serv-apagar")));
 });
 document.getElementById("listaProfissionais").addEventListener("click", function (e) {
   if (e.target.id === "btnNovoProf") { formProfissional(null); return; }
@@ -2694,18 +2699,27 @@ function formServico(id) {
     pronto: function () {
       var b = document.querySelector("#janelaCorpo [data-acao=apagar]");
       if (!b) return;
-      b.addEventListener("click", function () {
-        fecharJanela();
-        perguntar("Apagar " + s.nome + "?",
-          "Os agendamentos antigos continuam com o nome do serviço guardado.",
-          "Apagar", true, function () {
-            dados.servicos = dados.servicos.filter(function (x) { return x.id !== s.id; });
-            jogarNoLixo("servicos", s.id);
-            salvar(); desenhar(); recado("Serviço apagado.");
-          });
-      });
+      b.addEventListener("click", function () { fecharJanela(); apagarServico(s); });
     }
   });
+}
+
+/* Apagar serviço fica em dois lugares: na linha da lista, que é onde a dona
+   procura, e dentro do Editar. Diz quantos agendamentos usam o serviço antes
+   de apagar — eles continuam existindo, com o nome já guardado dentro deles. */
+function apagarServico(s) {
+  if (!s) return;
+  var usos = dados.agenda.filter(function (h) {
+    return (h.servicoIds || []).indexOf(s.id) >= 0;
+  }).length;
+  perguntar("Apagar " + s.nome + "?",
+    (usos ? usos + " agendamento(s) usam este serviço e continuam com o nome guardado. " : "") +
+    "Ele sai da lista de serviços do salão.",
+    "Apagar", true, function () {
+      dados.servicos = dados.servicos.filter(function (x) { return x.id !== s.id; });
+      jogarNoLixo("servicos", s.id);
+      salvar(); desenhar(); recado("Serviço apagado.");
+    });
 }
 
 function formProfissional(id) {
