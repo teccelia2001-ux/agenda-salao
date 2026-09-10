@@ -794,7 +794,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.13";
+var VERSAO_APP = "1.14";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -1549,7 +1549,14 @@ function abrirJanela(op) {
   var det = document.getElementById("janelaDetalhe");
   det.textContent = op.detalhe || "";
   det.hidden = !op.detalhe;
-  document.getElementById("janelaCorpo").innerHTML = op.corpo || "";
+  /* O corpo entra num elemento novo, no lugar do antigo: cada janela pendura
+     os seus próprios cliques aqui, e sem essa troca os cliques da janela
+     anterior continuavam vivos e respondiam de novo — uma parcela chegava a
+     abrir duas vezes a janela do "recebi". */
+  var corpoVelho = document.getElementById("janelaCorpo");
+  var corpo = corpoVelho.cloneNode(false);
+  corpo.innerHTML = op.corpo || "";
+  corpoVelho.parentNode.replaceChild(corpo, corpoVelho);
 
   var pe = document.getElementById("janelaPe");
   pe.innerHTML = "";
@@ -1842,14 +1849,19 @@ function verHorario(id) {
           var i = Number(par.getAttribute("data-parcela"));
           var p = h.pagamento.parcelas[i];
           var faltava = faltaDaParcela(p);
-          p.pago = !p.pago;
-          p.pagoEm = p.pago ? hojeIso() : null;
-          // desfazer devolve a parcela inteira: os pedaços já recebidos saem junto
-          if (!p.pago) p.recebidos = [];
-          salvar();
           fecharJanela();
+          if (faltava > 0) {
+            // a janela já vem com o valor cheio: confirmar quita, mudar recebe uma parte
+            janelaRecebimento(nomeDoHorario(h),
+              "Parcela de " + dinheiro(p.valor) + " · em aberto " + dinheiro(faltava),
+              [{ h: h, p: p }], faltava);
+            return;
+          }
+          // desfazer devolve a parcela inteira: os pedaços já recebidos saem junto
+          p.pago = false; p.pagoEm = null; p.recebidos = [];
+          salvar();
           desenhar();
-          recado(p.pago ? "Recebido: " + dinheiro(faltava) + "." : "Parcela voltou para em aberto.");
+          recado("Parcela voltou para em aberto.");
           return;
         }
         var b = e.target.closest("[data-acao]");
@@ -2187,12 +2199,13 @@ function parcelasEmAberto(hs) {
   });
 }
 
-/* Recebeu tudo ou um pedaço: o valor abate as parcelas mais antigas primeiro,
-   que é como se cobra na prática. Devolve quanto foi de fato aproveitado. */
-function baixarFiado(hs, valor) {
+/* Recebeu tudo ou um pedaço: o valor abate as parcelas na ordem em que
+   chegam — da mais antiga para a mais nova —, que é como se cobra na
+   prática. Devolve quanto foi de fato aproveitado. */
+function baixarFiado(alvos, valor) {
   var centavos = Math.round((Number(valor) || 0) * 100);
   var usado = 0, hoje = hojeIso();
-  parcelasEmAberto(hs).forEach(function (x) {
+  alvos.forEach(function (x) {
     if (centavos <= 0) return;
     var falta = Math.round(faltaDaParcela(x.p) * 100);
     var agora = Math.min(falta, centavos);
@@ -2417,7 +2430,11 @@ function verCliente(id) {
         var b = e.target.closest("[data-acao]");
         if (!b) return;
         fecharJanela();
-        if (b.getAttribute("data-acao") === "receber") { receberFiado(c, devendo, deve); return; }
+        if (b.getAttribute("data-acao") === "receber") {
+          janelaRecebimento(c.nome, "Em aberto: " + dinheiro(deve) + " · " + devendo.length + " atendimento(s)",
+            parcelasEmAberto(devendo), deve);
+          return;
+        }
         if (b.getAttribute("data-acao") === "agendar") {
           mostrarTela("agenda");
           setTimeout(function () {
@@ -2433,13 +2450,14 @@ function verCliente(id) {
   });
 }
 
-/* "Recebi" da ficha da cliente: pode ser tudo ou um pedaço. Vem preenchido
-   com o total em aberto, porque receber tudo é o caso comum; trocar o valor
-   registra um recebimento parcial, e o que sobrar continua devendo. */
-function receberFiado(c, devendo, deve) {
+/* A janela do "recebi". Serve para a dívida inteira de uma pessoa e para uma
+   parcela sozinha: o que muda é a lista de parcelas que recebe o dinheiro.
+   Vem preenchida com o total em aberto, porque receber tudo é o caso comum;
+   trocar o valor registra um recebimento parcial, e o resto continua devendo. */
+function janelaRecebimento(nome, detalhe, alvos, deve) {
   abrirJanela({
-    titulo: "Recebi de " + String(c.nome).split(" ")[0],
-    detalhe: "Em aberto: " + dinheiro(deve) + " · " + devendo.length + " atendimento(s)",
+    titulo: "Recebi de " + String(nome || "").split(" ")[0],
+    detalhe: detalhe,
     corpo:
       "<div class=\"grade\">" +
         "<div class=\"campo largo\"><label for=\"rcValor\">Quanto recebeu (R$)</label>" +
@@ -2460,7 +2478,7 @@ function receberFiado(c, devendo, deve) {
           aviso.textContent = "Ela deve " + dinheiro(deve) + ". Valor a mais não entra aqui.";
           return false;
         }
-        var usado = baixarFiado(devendo, valor);
+        var usado = baixarFiado(alvos, valor);
         salvar(); desenhar();
         var resta = deve - usado;
         recado(resta > 0.004
@@ -2742,6 +2760,10 @@ function desenharCaixa() {
     : "<div class=\"vazio\"><b>Ninguém sumido</b>Todas as clientes vieram nos últimos 60 dias ou já têm horário marcado.</div>";
 }
 
+/* A lista que está na tela, para o botão "recebi" saber de quem é a dívida
+   sem ter de recalcular tudo pelo índice de novo. */
+var DEVENDO_NA_TELA = [];
+
 /* A lista de dívidas não é do mês escolhido: quem deve, deve hoje,
    venha a dívida de quando vier. */
 function desenharFiado() {
@@ -2751,7 +2773,8 @@ function desenharFiado() {
     caixa.innerHTML = "<div class=\"vazio\"><b>Ninguém devendo</b>Tudo que foi atendido já está pago.</div>";
     return;
   }
-  caixa.innerHTML = lista.map(function (d) {
+  DEVENDO_NA_TELA = lista;
+  caixa.innerHTML = lista.map(function (d, i) {
     var c = d.clienteId ? acharCliente(d.clienteId) : null;
     var tel = c ? soDigitos(c.tel) : "";
     var atrasado = d.vencido > 0;
@@ -2761,11 +2784,22 @@ function desenharFiado() {
       "<small>" + dinheiro(d.total) + " em aberto" +
         (d.proxima ? " · " + (atrasado ? "venceu" : "vence") + " em " + diaCurto(d.proxima) : "") +
       "</small></span>" +
-      (tel ? "<span class=\"acoes\"><a class=\"btn btn-leve btn-mini\" target=\"_blank\" rel=\"noopener\" href=\"https://wa.me/55" +
-             esc(tel) + "?text=" + encodeURIComponent(cobranca(d)) + "\">cobrar</a></span>" : "") +
-      "</div>";
+      "<span class=\"acoes\">" +
+        (tel ? "<a class=\"btn btn-leve btn-mini\" target=\"_blank\" rel=\"noopener\" href=\"https://wa.me/55" +
+               esc(tel) + "?text=" + encodeURIComponent(cobranca(d)) + "\">cobrar</a>" : "") +
+        "<button class=\"btn btn-forte btn-mini\" data-receber=\"" + i + "\">recebi</button>" +
+      "</span></div>";
   }).join("");
 }
+
+document.getElementById("caixaFiado").addEventListener("click", function (e) {
+  var b = e.target.closest("[data-receber]");
+  if (!b) return;
+  var d = DEVENDO_NA_TELA[Number(b.getAttribute("data-receber"))];
+  if (!d) return;
+  janelaRecebimento(d.nome, "Em aberto: " + dinheiro(d.total) + " · " + d.horarios.length + " atendimento(s)",
+    parcelasEmAberto(d.horarios), d.total);
+});
 
 function cobranca(d) {
   return "Oi, " + String(d.nome).split(" ")[0] + "! Tudo bem? Passando para lembrar do " +
