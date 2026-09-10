@@ -182,43 +182,43 @@ button { cursor: pointer; }
 
 /* ---------- menu lateral (só no computador) ----------
    Da tela larga para cima as abas saem do topo e viram uma coluna presa à
-   direita, com ícone e uma linha dizendo o que cada uma faz. O conteúdo
-   ganha a folga da largura dela. */
+   esquerda, com ícone e uma linha dizendo o que cada uma faz. O conteúdo
+   ganha a folga da largura dela.
+   Os seletores levam ".abas" na frente de propósito: as regras das abas do
+   celular aparecem depois desta parte no arquivo, e sem esse peso a mais
+   elas desfariam o alinhamento à esquerda de cada item. */
 @media (min-width: 1000px) {
   .abas {
-    position: fixed; top: 0; right: 0; bottom: 0; width: var(--menu);
+    position: fixed; top: 0; left: 0; bottom: 0; width: var(--menu);
     display: flex; flex-direction: column; gap: 6px; align-content: start;
     margin: 0; padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
-    background: var(--superficie); border-left: 1px solid var(--linha);
+    background: var(--superficie); border-right: 1px solid var(--linha);
     overflow-y: auto; z-index: 40;
   }
   .abas::before {
     content: "MENU"; padding: 4px 10px 10px;
     font-size: 10.5px; font-weight: 700; letter-spacing: .16em; color: var(--fraco);
   }
-  .aba {
+  .abas .aba {
     display: flex; align-items: center; gap: 11px; text-align: left;
     padding: 11px 12px; border-radius: 12px; font-size: 14px;
   }
-  .aba-ico {
+  .abas .aba-ico {
     flex: 0 0 auto; display: block; width: 21px; height: 21px;
     fill: none; stroke: currentColor; stroke-width: 1.7;
     stroke-linecap: round; stroke-linejoin: round;
   }
-  .aba-txt { display: flex; flex-direction: column; min-width: 0; }
-  .aba-sub { display: block; font-size: 11.5px; font-weight: 600; color: var(--fraco); }
-  .aba[aria-current="page"] .aba-sub { color: rgba(255,255,255,.82); }
+  .abas .aba-txt { display: flex; flex-direction: column; min-width: 0; }
+  .abas .aba-sub { display: block; font-size: 11.5px; font-weight: 600; color: var(--fraco); }
+  .abas .aba[aria-current="page"] .aba-sub { color: rgba(255,255,255,.82); }
   /* o pontinho marca a seção aberta mesmo de longe, sem depender só da cor */
-  .aba[aria-current="page"]::after {
+  .abas .aba[aria-current="page"]::after {
     content: ""; margin-left: auto; width: 6px; height: 6px;
     border-radius: 50%; background: #fff;
   }
   /* a folga vem no body: o .folha se centraliza sozinho com margin auto,
-     e uma margem direita ali seria desfeita pela regra de fora da media */
-  body { padding-right: var(--menu); }
-  /* o "body" na frente e so para ganhar da regra do .fab la de baixo:
-     sem ele o botao flutuante ficaria por baixo do menu */
-  body .fab { right: calc(var(--menu) + 18px); }
+     e uma margem ali seria desfeita pela regra de fora da media */
+  body { padding-left: var(--menu); }
 }
 .aba {
   /* Cada aba e um botao de verdade, com fundo e contorno: o sublinhado
@@ -791,7 +791,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.9";
+var VERSAO_APP = "1.10";
 
 var CHAVE = "agenda-salao.v1";
 
