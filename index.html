@@ -6,7 +6,15 @@
 <title>Agenda do Salão</title>
 <meta name="theme-color" content="#c2185b" />
 <link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="192x192" href="icones/icone-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icones/icone-512.png" />
 <link rel="apple-touch-icon" href="icones/icone-180.png" />
+<script>
+/* O tema escolhido entra antes de a tela ser desenhada: senao o app pisca
+   branco por um instante ao abrir no escuro. */
+(function(){try{var t=localStorage.getItem("agenda-salao-tema");
+  if(t==="claro"||t==="escuro")document.documentElement.setAttribute("data-tema",t);}catch(e){}})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Agenda" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -55,8 +63,12 @@
   --mono:        ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
+/* Os mesmos tons do escuro valem em dois casos: o aparelho no modo escuro
+   (e o app em "seguir o sistema"), e o app preso no escuro pela mao do
+   usuario. Por isso a lista aparece duas vezes — CSS nao deixa juntar
+   uma media query com um seletor. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema="claro"]) {
     --rosa:        #f06292;
     --rosa-forte:  #f8a5c0;
     --rosa-claro:  #3b1f2b;
@@ -81,6 +93,30 @@
   }
 }
 
+:root[data-tema="escuro"] {
+  --rosa:        #f06292;
+  --rosa-forte:  #f8a5c0;
+  --rosa-claro:  #3b1f2b;
+  --rosa-suave:  #2a1720;
+  --tinta:       #f7e9ef;
+  --tinta-2:     #d9bfcb;
+  --fraco:       #a98a99;
+  --superficie:  #21131a;
+  --superficie-2:#2a1922;
+  --vidro:       rgba(33,19,26,.70);
+  --linha:       #3d2531;
+  --linha-forte: #52333f;
+  --ok:          #7fd1a8;
+  --ok-suave:    #1e3830;
+  --verde-claro: #1f4034;
+  --verde-forte: #8fe0b6;
+  --alerta:      #e8a877;
+  --alerta-suave:#3a2618;
+  --erro:        #f0918b;
+  --erro-suave:  #3a1e1e;
+  --sombra:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+}
+
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -98,8 +134,9 @@ body::before {
   opacity: .22;
 }
 @media (prefers-color-scheme: dark) {
-  body::before { opacity: .20; }
+  :root:not([data-tema="claro"]) body::before { opacity: .20; }
 }
+:root[data-tema="escuro"] body::before { opacity: .20; }
 h1, h2, h3 { font-family: var(--fonte); font-weight: 700; margin: 0; letter-spacing: -.01em; }
 h1 { font-size: 21px; font-weight: 800; }
 h2 { font-size: 17px; }
@@ -131,16 +168,27 @@ button { cursor: pointer; }
 }
 .marca .nome:focus { outline: none; border-bottom: 1px dashed var(--linha-forte); }
 
-.abas { display: flex; gap: 2px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; }
-.abas::-webkit-scrollbar { display: none; }
+/* Em pilula as seis abas nao cabem numa linha de celular, e rolagem
+   escondida esconde justamente as ultimas. Entao viram duas fileiras de
+   tres; da tela media para cima voltam a caber todas numa linha so. */
+.abas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; padding-bottom: 9px; }
+@media (min-width: 560px) { .abas { grid-template-columns: repeat(6, 1fr); } }
 .aba {
-  flex: 0 0 auto; border: 0; background: transparent; color: var(--fraco);
-  /* apertado de propósito: com a Open Sans, mais larga, as seis abas
-     precisam caber num celular de 360px sem virar rolagem escondida */
-  padding: 9px 6px 11px; border-bottom: 2.5px solid transparent;
-  font-size: 13px; font-weight: 600; white-space: nowrap;
+  /* Cada aba e um botao de verdade, com fundo e contorno: o sublinhado
+     sozinho sumia no celular e so a aba aberta parecia clicavel. A letra
+     e o vao ficaram menores para as seis continuarem cabendo num
+     celular de 360px sem virar rolagem escondida. */
+  border: 1px solid var(--linha); text-align: center;
+  background: var(--superficie-2); color: var(--tinta-2);
+  padding: 8px 9px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; white-space: nowrap;
 }
-.aba[aria-current="page"] { color: var(--rosa); border-bottom-color: var(--rosa); }
+.aba:hover { background: var(--rosa-claro); border-color: var(--linha-forte); }
+.aba[aria-current="page"] {
+  background: var(--rosa); border-color: var(--rosa); color: #fff;
+  box-shadow: 0 2px 8px rgba(194,24,91,.28);
+}
+.aba[aria-current="page"]:hover { background: var(--rosa-forte); border-color: var(--rosa-forte); }
 
 /* a sobra embaixo é o espaço do botão flutuante: sem ela o último
    horário do dia fica escondido atrás do "+ Agendar" */
@@ -557,6 +605,22 @@ button { cursor: pointer; }
     </div>
 
     <div class="cartao">
+      <div class="cartao-topo"><h2>Aparência</h2></div>
+      <div class="cartao-corpo">
+        <div class="grade">
+          <div class="campo largo">
+            <label for="temaApp">Tema do aplicativo</label>
+            <select id="temaApp">
+              <option value="sistema">Seguir o aparelho</option>
+              <option value="claro">Sempre claro</option>
+              <option value="escuro">Sempre escuro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao">
       <div class="cartao-topo"><h2>Horário de trabalho</h2></div>
       <div class="cartao-corpo">
         <div class="grade">
@@ -658,7 +722,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.6";
+var VERSAO_APP = "1.7";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -3365,6 +3429,47 @@ pedirArmazenamentoPermanente().then(function (permanente) {
 
 // voltou o sinal: manda o que ficou esperando
 window.addEventListener("online", function () { agendarSync(500); });
+
+/* ---------- tema claro / escuro ----------
+   A escolha fica neste aparelho, fora da agenda: quem usa o app no celular
+   e no computador pode querer um tema em cada um. "Seguir o aparelho" nao
+   grava nada — volta a valer o modo escuro do proprio sistema. */
+(function () {
+  var CHAVE_TEMA = "agenda-salao-tema";
+  var sel = document.getElementById("temaApp");
+  var meta = document.querySelector('meta[name="theme-color"]');
+  var atual = "sistema";
+  try { var t = localStorage.getItem(CHAVE_TEMA); if (t === "claro" || t === "escuro") atual = t; } catch (e) {}
+
+  function aplicar(v) {
+    if (v === "sistema") document.documentElement.removeAttribute("data-tema");
+    else document.documentElement.setAttribute("data-tema", v);
+    if (meta) {
+      var escuro = v === "escuro" ||
+        (v === "sistema" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      meta.setAttribute("content", escuro ? "#21131a" : "#c2185b");
+    }
+  }
+
+  aplicar(atual);
+  if (sel) {
+    sel.value = atual;
+    sel.addEventListener("change", function () {
+      var v = sel.value;
+      try {
+        if (v === "sistema") localStorage.removeItem(CHAVE_TEMA);
+        else localStorage.setItem(CHAVE_TEMA, v);
+      } catch (e) {}
+      aplicar(v);
+    });
+  }
+  // com "seguir o aparelho", trocar o tema do sistema muda a barra do app na hora
+  try {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+      if (!document.documentElement.hasAttribute("data-tema")) aplicar("sistema");
+    });
+  } catch (e) {}
+})();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {

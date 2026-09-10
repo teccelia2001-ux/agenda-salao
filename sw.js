@@ -11,7 +11,7 @@
    Os agendamentos NÃO passam por aqui: eles moram no armazenamento do
    aparelho (localStorage) e nunca saem dele. */
 
-var VERSAO = "agenda-salao-v6";   // v6: cartoes mais claros
+var VERSAO = "agenda-salao-v7";   // v7: icone proprio, abas em destaque e tema claro/escuro
 var ESSENCIAIS = [
   "./",
   "./index.html",
