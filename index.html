@@ -791,7 +791,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.10";
+var VERSAO_APP = "1.11";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -1838,12 +1838,15 @@ function verHorario(id) {
         if (par) {
           var i = Number(par.getAttribute("data-parcela"));
           var p = h.pagamento.parcelas[i];
+          var faltava = faltaDaParcela(p);
           p.pago = !p.pago;
           p.pagoEm = p.pago ? hojeIso() : null;
+          // desfazer devolve a parcela inteira: os pedaços já recebidos saem junto
+          if (!p.pago) p.recebidos = [];
           salvar();
           fecharJanela();
           desenhar();
-          recado(p.pago ? "Recebido: " + dinheiro(p.valor) + "." : "Parcela voltou para em aberto.");
+          recado(p.pago ? "Recebido: " + dinheiro(faltava) + "." : "Parcela voltou para em aberto.");
           return;
         }
         var b = e.target.closest("[data-acao]");
@@ -1878,14 +1881,20 @@ function listaParcelas(h) {
   var titulo = pg.tipo === "parcelado" ? "Parcelas" : "Fiado";
   var linhas = pg.parcelas.map(function (p, i) {
     var atrasada = !p.pago && p.vence < hojeIso();
+    var jaVeio = pagoDaParcela(p);
+    var parcial = !p.pago && jaVeio > 0;
     return "<div class=\"item\">" +
       "<span class=\"txt\"><b>" +
         (pg.tipo === "parcelado" ? p.n + "ª de " + pg.parcelas.length + " · " : "") +
         dinheiro(p.valor) + " " +
         (p.pago ? "<span class=\"selo ok\">pago</span>"
+                : parcial ? "<span class=\"selo\">parcial</span>"
                 : atrasada ? "<span class=\"selo aviso\">vencido</span>" : "") +
       "</b><small>" +
-        (p.pago ? "recebido em " + diaCurto(p.pagoEm || p.vence) : "vence em " + diaCurto(p.vence)) +
+        (p.pago ? "recebido em " + diaCurto(p.pagoEm || p.vence)
+                : parcial ? "já veio " + dinheiro(jaVeio) + " · faltam " + dinheiro(faltaDaParcela(p)) +
+                            " · vence em " + diaCurto(p.vence)
+                : "vence em " + diaCurto(p.vence)) +
       "</small></span>" +
       "<span class=\"acoes\"><button class=\"btn btn-leve btn-mini\" data-parcela=\"" + i + "\">" +
         (p.pago ? "desfazer" : "recebi") + "</button></span></div>";
@@ -2125,18 +2134,72 @@ function montarPagamento(tipo, valor, vezes, primeiroVence, anterior) {
   return { tipo: tipo, parcelas: parcelas };
 }
 
+/* Uma parcela pode ser recebida em pedaços: cada pedaço fica guardado em
+   "recebidos", com o valor e o dia. A parcela só vira "paga" quando os
+   pedaços fecham o valor dela. */
+function pagoDaParcela(p) {
+  if (p.pago) return Number(p.valor) || 0;
+  return (p.recebidos || []).reduce(function (t, r) { return t + (Number(r.valor) || 0); }, 0);
+}
+
+function faltaDaParcela(p) {
+  var f = (Number(p.valor) || 0) - pagoDaParcela(p);
+  return f > 0.004 ? f : 0;   // um centavo de sobra de conta não é dívida
+}
+
+/* Cada entrada de dinheiro com a sua data — é assim que o Caixa sabe em que
+   mês ela entrou. Parcela baixada de uma vez não tem lista de pedaços: o que
+   falta para fechar o valor entrou no dia da baixa. */
+function recebimentosDaParcela(p) {
+  var lista = (p.recebidos || []).slice();
+  var resto = (Number(p.valor) || 0) -
+    lista.reduce(function (t, r) { return t + (Number(r.valor) || 0); }, 0);
+  if (p.pago && resto > 0.004) lista.push({ valor: resto, em: p.pagoEm || p.vence });
+  return lista;
+}
+
 function emAbertoDe(h) {
   if (!h.pagamento) return 0;
-  return h.pagamento.parcelas.reduce(function (t, p) {
-    return t + (p.pago ? 0 : (Number(p.valor) || 0));
-  }, 0);
+  return h.pagamento.parcelas.reduce(function (t, p) { return t + faltaDaParcela(p); }, 0);
 }
 
 function totalPagoDe(h) {
   if (!h.pagamento) return 0;
-  return h.pagamento.parcelas.reduce(function (t, p) {
-    return t + (p.pago ? (Number(p.valor) || 0) : 0);
-  }, 0);
+  return h.pagamento.parcelas.reduce(function (t, p) { return t + pagoDaParcela(p); }, 0);
+}
+
+/* As dívidas em aberto de uma pessoa, da mais antiga para a mais nova: é
+   nessa ordem que o dinheiro recebido vai abatendo. */
+function parcelasEmAberto(hs) {
+  var lista = [];
+  hs.forEach(function (h) {
+    if (!h.pagamento) return;
+    h.pagamento.parcelas.forEach(function (p) {
+      if (faltaDaParcela(p) > 0) lista.push({ h: h, p: p });
+    });
+  });
+  return lista.sort(function (a, b) {
+    if (a.p.vence !== b.p.vence) return a.p.vence < b.p.vence ? -1 : 1;
+    return a.h.data < b.h.data ? -1 : 1;
+  });
+}
+
+/* Recebeu tudo ou um pedaço: o valor abate as parcelas mais antigas primeiro,
+   que é como se cobra na prática. Devolve quanto foi de fato aproveitado. */
+function baixarFiado(hs, valor) {
+  var centavos = Math.round((Number(valor) || 0) * 100);
+  var usado = 0, hoje = hojeIso();
+  parcelasEmAberto(hs).forEach(function (x) {
+    if (centavos <= 0) return;
+    var falta = Math.round(faltaDaParcela(x.p) * 100);
+    var agora = Math.min(falta, centavos);
+    if (agora <= 0) return;
+    if (!x.p.recebidos) x.p.recebidos = [];
+    x.p.recebidos.push({ valor: agora / 100, em: hoje });
+    if (agora >= falta) { x.p.pago = true; x.p.pagoEm = hoje; }
+    centavos -= agora; usado += agora;
+  });
+  return usado / 100;
 }
 
 function proximaParcela(h) {
@@ -2308,6 +2371,9 @@ function verCliente(id) {
   var gasto = atendidos.reduce(function (t, h) { return t + (Number(h.valor) || 0); }, 0);
   var faltas = hist.filter(function (h) { return h.status === "faltou"; }).length;
   var tel = soDigitos(c.tel);
+  var devendo = hist.filter(function (h) { return h.status !== "cancelado" && emAbertoDe(h) > 0; });
+  var deve = devendo.reduce(function (t, h) { return t + emAbertoDe(h); }, 0);
+  var venceu = devendo.some(estaVencido);
 
   var linhas = hist.slice(0, 12).map(function (h) {
     var selo = h.status === "atendido" ? "<span class=\"selo ok\">atendido</span>"
@@ -2328,6 +2394,17 @@ function verCliente(id) {
         "<button class=\"btn\" data-acao=\"agendar\">Agendar</button>" +
         "<button class=\"btn\" data-acao=\"editar\">Editar</button>" +
       "</div>" +
+      /* O fiado dela fica logo abaixo dos botões, com o valor por extenso:
+         é o que a dona procura quando a cliente chega para pagar. */
+      (deve
+        ? "<div class=\"cartao\" style=\"margin-bottom:14px\"><div class=\"cartao-corpo\">" +
+            "<div class=\"item\" style=\"padding:0;border:0\">" +
+              "<span class=\"txt\"><b>Fiado em aberto " +
+                (venceu ? "<span class=\"selo aviso\">atrasado</span>" : "") + "</b>" +
+              "<small>" + dinheiro(deve) + " · " + devendo.length + " atendimento(s)</small></span>" +
+              "<span class=\"acoes\"><button class=\"btn btn-forte btn-mini\" data-acao=\"receber\">Recebi</button></span>" +
+            "</div></div></div>"
+        : "") +
       (c.obs ? "<p style=\"font-size:13.5px;color:var(--tinta-2);margin-bottom:12px\">" + esc(c.obs) + "</p>" : "") +
       "<h3 style=\"margin-bottom:6px\">Histórico</h3>" +
       (linhas || "<div class=\"vazio\">Nenhum atendimento ainda.</div>"),
@@ -2337,6 +2414,7 @@ function verCliente(id) {
         var b = e.target.closest("[data-acao]");
         if (!b) return;
         fecharJanela();
+        if (b.getAttribute("data-acao") === "receber") { receberFiado(c, devendo, deve); return; }
         if (b.getAttribute("data-acao") === "agendar") {
           mostrarTela("agenda");
           setTimeout(function () {
@@ -2349,6 +2427,44 @@ function verCliente(id) {
         }
       });
     }
+  });
+}
+
+/* "Recebi" da ficha da cliente: pode ser tudo ou um pedaço. Vem preenchido
+   com o total em aberto, porque receber tudo é o caso comum; trocar o valor
+   registra um recebimento parcial, e o que sobrar continua devendo. */
+function receberFiado(c, devendo, deve) {
+  abrirJanela({
+    titulo: "Recebi de " + String(c.nome).split(" ")[0],
+    detalhe: "Em aberto: " + dinheiro(deve) + " · " + devendo.length + " atendimento(s)",
+    corpo:
+      "<div class=\"grade\">" +
+        "<div class=\"campo largo\"><label for=\"rcValor\">Quanto recebeu (R$)</label>" +
+        "<input id=\"rcValor\" inputmode=\"decimal\" value=\"" + deve.toFixed(2).replace(".", ",") + "\" /></div>" +
+      "</div>" +
+      "<p style=\"font-size:12.5px;color:var(--tinta-2);margin-top:8px\">" +
+        "Deixe o valor cheio para quitar tudo. Recebendo menos, o dinheiro abate " +
+        "as dívidas mais antigas primeiro e o resto continua em aberto.</p>" +
+      "<p class=\"aviso-campo\" id=\"rcAviso\"></p>",
+    botoes: [
+      { texto: "Voltar", classe: "" },
+      { texto: "Registrar", classe: "btn-forte", acao: function () {
+        var bruto = String(document.getElementById("rcValor").value || "").replace(/\s/g, "").replace(",", ".");
+        var valor = Number(bruto);
+        var aviso = document.getElementById("rcAviso");
+        if (!(valor > 0)) { aviso.textContent = "Diga quanto recebeu."; return false; }
+        if (valor - deve > 0.004) {
+          aviso.textContent = "Ela deve " + dinheiro(deve) + ". Valor a mais não entra aqui.";
+          return false;
+        }
+        var usado = baixarFiado(devendo, valor);
+        salvar(); desenhar();
+        var resta = deve - usado;
+        recado(resta > 0.004
+          ? "Recebido " + dinheiro(usado) + ". Ainda faltam " + dinheiro(resta) + "."
+          : "Fiado quitado: " + dinheiro(usado) + ".");
+      } }
+    ]
   });
 }
 
@@ -2540,7 +2656,9 @@ function desenharCaixa() {
   dados.agenda.forEach(function (h) {
     if (h.status === "cancelado" || !h.pagamento) return;
     h.pagamento.parcelas.forEach(function (p) {
-      if (p.pago && p.pagoEm && p.pagoEm >= ini && p.pagoEm <= fim) recebido += Number(p.valor) || 0;
+      recebimentosDaParcela(p).forEach(function (r) {
+        if (r.em && r.em >= ini && r.em <= fim) recebido += Number(r.valor) || 0;
+      });
     });
   });
 
