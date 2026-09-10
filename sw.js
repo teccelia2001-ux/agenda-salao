@@ -11,7 +11,7 @@
    Os agendamentos NÃO passam por aqui: eles moram no armazenamento do
    aparelho (localStorage) e nunca saem dele. */
 
-var VERSAO = "agenda-salao-v15";  // v15: escolher a cliente ja traz o atendimento dela
+var VERSAO = "agenda-salao-v16";  // v16: seis ajustes da nota PARA O CLAUDE
 var ESSENCIAIS = [
   "./",
   "./index.html",

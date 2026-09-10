@@ -271,6 +271,12 @@ button { cursor: pointer; }
 .btn-forte:hover { background: var(--rosa-forte); border-color: var(--rosa-forte); }
 .btn-leve { border-color: transparent; background: transparent; color: var(--rosa); padding: 8px 10px; }
 .btn-leve:hover { background: var(--rosa-claro); }
+/* atendeu e faltou são os dois botões mais usados da ficha: verde e vermelho
+   de longe, e preenchidos quando são o estado atual do horário */
+.btn-sim { color: var(--verde-forte); border-color: var(--verde-forte); }
+.btn-sim:hover, .btn-sim.aceso { background: var(--ok); border-color: var(--ok); color: #fff; }
+.btn-nao { color: var(--erro); border-color: var(--erro); }
+.btn-nao:hover, .btn-nao.aceso { background: var(--erro); border-color: var(--erro); color: #fff; }
 .btn-perigo { color: var(--erro); }
 .btn-perigo:hover { background: var(--erro-suave); }
 .btn-mini { padding: 6px 10px; font-size: 13px; border-radius: 8px; }
@@ -290,6 +296,9 @@ button { cursor: pointer; }
 
 /* ---------- campos ---------- */
 .campo { display: flex; flex-direction: column; gap: 5px; }
+/* o display acima ganha do [hidden] do navegador: sem esta linha o "em
+   quantas vezes" aparecia mesmo com o pagamento à vista */
+.campo[hidden] { display: none; }
 .campo > label { font-size: 12.5px; font-weight: 600; color: var(--tinta-2); }
 .campo input, .campo select, .campo textarea {
   width: 100%; padding: 11px 12px; border-radius: 10px;
@@ -411,6 +420,11 @@ button { cursor: pointer; }
 .numero b { display: block; font-size: 21px; font-family: var(--fonte); font-weight: 700; margin-top: 3px; }
 .numero.dinheiro b { color: var(--ok); }
 .numero.atrasado b { color: var(--alerta); }
+/* no celular a grade tem duas colunas: em número ímpar de quadros, o último
+   ocupa a linha inteira em vez de deixar meio cartão de buraco rosa */
+@media (max-width: 559px) {
+  .numeros > .numero:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 
 .barra-lista { display: flex; flex-direction: column; gap: 10px; }
 .barra-item small { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 4px; }
@@ -794,7 +808,7 @@ button { cursor: pointer; }
 /* Versão do aplicativo. Sobe a cada publicação — é ela que o botão
    "Procurar atualização" compara com a que está no servidor.
    O formato é livre; o que importa é mudar quando o app muda. */
-var VERSAO_APP = "1.15";
+var VERSAO_APP = "1.16";
 
 var CHAVE = "agenda-salao.v1";
 
@@ -1832,8 +1846,8 @@ function verHorario(id) {
       "<button class=\"btn\" data-acao=\"editar\">Editar</button>" +
     "</div>" +
     "<div style=\"margin-top:8px\" class=\"linha-botoes\">" +
-      "<button class=\"btn\" data-acao=\"atendido\">Atendeu</button>" +
-      "<button class=\"btn\" data-acao=\"faltou\">Faltou</button>" +
+      "<button class=\"btn btn-sim" + (h.status === "atendido" ? " aceso" : "") + "\" data-acao=\"atendido\">✓ Atendeu</button>" +
+      "<button class=\"btn btn-nao" + (h.status === "faltou" ? " aceso" : "") + "\" data-acao=\"faltou\">✗ Faltou</button>" +
       "<button class=\"btn btn-perigo\" data-acao=\"apagar\">Apagar</button>" +
     "</div>";
 
@@ -1957,6 +1971,7 @@ function formAgendamento(id, horaSugerida) {
       esc(s.nome) + "</button>";
   }).join("");
 
+  var cliDoForm = h.clienteId ? acharCliente(h.clienteId) : null;
   var pag = h.pagamento || null;
   var tipoPag = pag ? pag.tipo : "avista";
   var vezesAtual = pag && pag.parcelas ? pag.parcelas.length : 2;
@@ -1969,17 +1984,20 @@ function formAgendamento(id, horaSugerida) {
   var corpo =
     "<div class=\"grade\">" +
       "<div class=\"campo largo\"><label for=\"fCli\">Cliente</label><select id=\"fCli\">" + opcoesCli + "</select></div>" +
-      "<div class=\"campo largo\" id=\"caixaNome\"" + (h.clienteId ? " hidden" : "") + ">" +
-        "<label for=\"fNome\">Nome</label><input id=\"fNome\" value=\"" + esc(h.nome) + "\" placeholder=\"Como chamar a cliente\" />" +
-        "<small>Ao salvar, ela entra na lista de clientes.</small></div>" +
-      "<div class=\"campo largo\" id=\"caixaTel\"" + (h.clienteId ? " hidden" : "") + ">" +
-        "<label for=\"fTel\">WhatsApp (opcional)</label><input id=\"fTel\" inputmode=\"numeric\" placeholder=\"DDD + número\" /></div>" +
+      "<div class=\"campo largo\" id=\"caixaNome\">" +
+        "<label for=\"fNome\">Nome</label><input id=\"fNome\" value=\"" + esc(cliDoForm ? cliDoForm.nome : h.nome) + "\" placeholder=\"Como chamar a cliente\" />" +
+        "<small id=\"fNomeDica\">" + (cliDoForm ? "Mudar aqui muda também na ficha dela." : "Ao salvar, ela entra na lista de clientes.") + "</small></div>" +
+      "<div class=\"campo largo\" id=\"caixaTel\">" +
+        "<label for=\"fTel\">WhatsApp (opcional)</label><input id=\"fTel\" inputmode=\"numeric\" placeholder=\"DDD + número\" value=\"" + esc(cliDoForm ? cliDoForm.tel : "") + "\" /></div>" +
       "<p class=\"largo\" id=\"fDoCliente\" style=\"font-size:12.5px;color:var(--tinta-2);margin:0\" hidden></p>" +
       "<div class=\"campo largo\"><label>Serviços</label><div class=\"fichas\" id=\"fServ\">" + fichasServ + "</div></div>" +
       "<div class=\"campo\"><label for=\"fData\">Dia</label><input type=\"date\" id=\"fData\" value=\"" + esc(h.data) + "\" /></div>" +
       "<div class=\"campo\"><label for=\"fHora\">Hora</label><input type=\"time\" id=\"fHora\" value=\"" + esc(h.hora) + "\" /></div>" +
-      "<div class=\"campo\"><label for=\"fMin\">Duração (minutos)</label><input type=\"number\" id=\"fMin\" min=\"5\" step=\"5\" value=\"" + (Number(h.min) || 40) + "\" /></div>" +
-      "<div class=\"campo\"><label for=\"fValor\">Valor (R$)</label><input type=\"number\" id=\"fValor\" min=\"0\" step=\"0.01\" value=\"" + (Number(h.valor) || 0) + "\" /></div>" +
+      "<div class=\"campo\"><label for=\"fDurH\">Duração — horas</label>" +
+        "<input type=\"number\" id=\"fDurH\" min=\"0\" max=\"12\" step=\"1\" value=\"" + Math.floor((Number(h.min) || 40) / 60) + "\" /></div>" +
+      "<div class=\"campo\"><label for=\"fDurM\">e minutos</label>" +
+        "<input type=\"number\" id=\"fDurM\" min=\"0\" max=\"55\" step=\"5\" value=\"" + ((Number(h.min) || 40) % 60) + "\" /></div>" +
+      "<div class=\"campo largo\"><label for=\"fValor\">Valor (R$)</label><input type=\"number\" id=\"fValor\" min=\"0\" step=\"0.01\" value=\"" + (Number(h.valor) || 0) + "\" /></div>" +
       (dados.profissionais.length > 1
         ? "<div class=\"campo largo\"><label for=\"fProf\">Profissional</label><select id=\"fProf\">" + opcoesProf + "</select></div>" : "") +
       "<div class=\"campo largo\"><label>Pagamento</label>" +
@@ -2011,9 +2029,11 @@ function formAgendamento(id, horaSugerida) {
     pronto: function () {
       var sel = document.getElementById("fCli");
       sel.addEventListener("change", function () {
-        var temCliente = !!sel.value;
-        document.getElementById("caixaNome").hidden = temCliente;
-        document.getElementById("caixaTel").hidden = temCliente;
+        if (!sel.value) {
+          document.getElementById("fNome").value = "";
+          document.getElementById("fTel").value = "";
+          document.getElementById("fNomeDica").textContent = "Ao salvar, ela entra na lista de clientes.";
+        }
         puxarDaCliente(sel.value);
       });
 
@@ -2026,6 +2046,11 @@ function formAgendamento(id, horaSugerida) {
         recadoEl.hidden = true; recadoEl.textContent = "";
         if (!clienteId) return;
         var c = acharCliente(clienteId);
+        if (c) {
+          document.getElementById("fNome").value = c.nome;
+          document.getElementById("fTel").value = c.tel || "";
+          document.getElementById("fNomeDica").textContent = "Mudar aqui muda também na ficha dela.";
+        }
         var hist = historicoDe(clienteId).filter(function (x) { return x.id !== h.id; });
         var ultimo = hist.filter(function (x) {
           return x.status !== "cancelado" && (x.servicoIds || []).length;
@@ -2039,7 +2064,7 @@ function formAgendamento(id, horaSugerida) {
           });
           recalcular();
           // duração e preço do próprio atendimento: podem ter sido ajustados à mão
-          if (Number(ultimo.min)) document.getElementById("fMin").value = Number(ultimo.min);
+          if (Number(ultimo.min)) porDuracao(Number(ultimo.min));
           if (Number(ultimo.valor)) document.getElementById("fValor").value = Number(ultimo.valor).toFixed(2);
           var prof = document.getElementById("fProf");
           if (prof && ultimo.profId) prof.value = ultimo.profId;
@@ -2049,9 +2074,7 @@ function formAgendamento(id, horaSugerida) {
         var obs = document.getElementById("fObs");
         if (c && c.obs && !obs.value.trim()) obs.value = c.obs;
 
-        var deve = hist.reduce(function (t, x) {
-          return t + (x.status === "cancelado" ? 0 : emAbertoDe(x));
-        }, 0);
+        var deve = hist.reduce(function (t, x) { return t + emAbertoDe(x); }, 0);
         if (deve) partes.push("Tem " + dinheiro(deve) + " em aberto.");
 
         if (partes.length) { recadoEl.textContent = partes.join(" "); recadoEl.hidden = false; }
@@ -2125,8 +2148,23 @@ function formAgendamento(id, horaSugerida) {
       valor += Number(s.preco) || 0;
     });
     if (!algum) return;
-    document.getElementById("fMin").value = min;
+    porDuracao(min);
     document.getElementById("fValor").value = valor.toFixed(2);
+  }
+
+  /* A duração é escrita em dois campos, horas e minutos, porque escova com
+     progressiva passa de duas horas e ninguém conta isso em minuto. Por
+     dentro continua sendo um número só de minutos. */
+  function porDuracao(min) {
+    min = Math.max(0, Number(min) || 0);
+    document.getElementById("fDurH").value = Math.floor(min / 60);
+    document.getElementById("fDurM").value = min % 60;
+  }
+
+  function duracaoDoForm() {
+    var horas = Number(document.getElementById("fDurH").value) || 0;
+    var minutos = Number(document.getElementById("fDurM").value) || 0;
+    return horas * 60 + minutos;
   }
 }
 
@@ -2215,8 +2253,15 @@ function recebimentosDaParcela(p) {
   return lista;
 }
 
+/* Falta não vira dívida: a cliente não foi atendida, então não há o que
+   cobrar. O pagamento fica guardado no agendamento — se ela for remarcada
+   para atendida, a dívida volta a valer sozinha. */
+function contaComoDivida(h) {
+  return h.status !== "cancelado" && h.status !== "faltou";
+}
+
 function emAbertoDe(h) {
-  if (!h.pagamento) return 0;
+  if (!h.pagamento || !contaComoDivida(h)) return 0;
   return h.pagamento.parcelas.reduce(function (t, p) { return t + faltaDaParcela(p); }, 0);
 }
 
@@ -2274,7 +2319,7 @@ function estaVencido(h) {
 function devedores() {
   var mapa = {};
   dados.agenda.forEach(function (h) {
-    if (h.status === "cancelado") return;
+    if (!contaComoDivida(h)) return;
     var falta = emAbertoDe(h);
     if (!falta) return;
     var chave = h.clienteId || ("avulso:" + nomeDoHorario(h));
@@ -2324,11 +2369,21 @@ function guardarAgendamento(h, novo) {
     }
   }
 
+  /* Cliente já cadastrada: o nome e o WhatsApp aparecem preenchidos e
+     continuam editáveis, então o que for corrigido aqui vale para a ficha
+     dela — é o mesmo dado, não uma cópia. */
+  var jaCadastrada = acharCliente(clienteId);
+  if (jaCadastrada) {
+    if (nome.trim()) jaCadastrada.nome = nome.trim();
+    if (tel.trim() !== jaCadastrada.tel) jaCadastrada.tel = tel.trim();
+  }
+
   h.clienteId = clienteId;
   h.nome = "";
   h.data = data;
   h.hora = hora;
-  h.min = Number(document.getElementById("fMin").value) || 30;
+  h.min = (Number(document.getElementById("fDurH").value) || 0) * 60 +
+          (Number(document.getElementById("fDurM").value) || 0) || 30;
   h.valor = Number(document.getElementById("fValor").value) || 0;
   h.servicoIds = servicoIds;
   h.obs = document.getElementById("fObs").value.trim();
@@ -2429,7 +2484,7 @@ function verCliente(id) {
   var gasto = atendidos.reduce(function (t, h) { return t + (Number(h.valor) || 0); }, 0);
   var faltas = hist.filter(function (h) { return h.status === "faltou"; }).length;
   var tel = soDigitos(c.tel);
-  var devendo = hist.filter(function (h) { return h.status !== "cancelado" && emAbertoDe(h) > 0; });
+  var devendo = hist.filter(function (h) { return emAbertoDe(h) > 0; });
   var deve = devendo.reduce(function (t, h) { return t + emAbertoDe(h); }, 0);
   var venceu = devendo.some(estaVencido);
 
@@ -2728,14 +2783,13 @@ function desenharCaixa() {
   // tudo que ainda devem, de qualquer mês: dívida não fica presa ao calendário
   var fiadoAberto = 0, fiadoVencido = 0;
   dados.agenda.forEach(function (h) {
-    if (h.status === "cancelado") return;
+    if (!contaComoDivida(h)) return;
     var falta = emAbertoDe(h);
     fiadoAberto += falta;
     if (estaVencido(h)) fiadoVencido += falta;
   });
 
   var aReceber = marcados.reduce(function (t, h) { return t + (Number(h.valor) || 0); }, 0);
-  var ticket = atendidos.length ? atendidos.reduce(function (t, h) { return t + (Number(h.valor) || 0); }, 0) / atendidos.length : 0;
 
   // número par de quadros: em duas colunas, um ímpar deixa um buraco
   // rosa no fim da grade, com cara de cartão quebrado
@@ -2744,7 +2798,6 @@ function desenharCaixa() {
     quadro("Fiado em aberto", dinheiro(fiadoAberto), fiadoVencido ? "atrasado" : "") +
     quadro("Ainda marcado", dinheiro(aReceber), "") +
     quadro("Atendimentos", String(atendidos.length), "") +
-    quadro("Ticket médio", dinheiro(ticket), "") +
     quadro("Faltas", String(faltas.length), "");
 
   var avisoFiado = document.getElementById("avisoVencido");
